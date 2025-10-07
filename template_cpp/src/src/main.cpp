@@ -1,15 +1,16 @@
 #include <chrono>
 #include <iostream>
 #include <thread>
+#include <array>
 
+#include <signal.h>
 #include "parser.hpp"
 #include "hello.h"
-#include <signal.h>
 
-static int SENDER_PORT = 10001;
-static int RECEIVER_PORT = 10002;
-static int RECEIVER_ID = 3;
-static int MAXLINE = 1024;
+static constexpr int SENDER_PORT = 10001;
+static constexpr int RECEIVER_PORT = 10002;
+static constexpr int RECEIVER_ID = 3;
+static constexpr int MAXLINE = 1024;
 
 static void stop(int)
 {
@@ -101,7 +102,7 @@ void receiver()
 {
   // File descriptor of a socket
   int sockfd;
-  // std::vector<char> buffer;
+  std::array<char, MAXLINE> buffer;
   const char *hello = "Hello from receiver";
   struct sockaddr_in senderaddr, receiveraddr;
 
@@ -119,7 +120,7 @@ void receiver()
   receiveraddr.sin_port = htons(RECEIVER_PORT);
 
   // Bind the socket with the sender address
-  if (bind(sockfd, (const struct sockaddr *)&receiveraddr,
+  if (bind(sockfd, reinterpret_cast<const struct sockaddr *>(&receiveraddr),
            sizeof(receiveraddr)) < 0)
   {
     perror("bind failed");
@@ -127,15 +128,15 @@ void receiver()
   }
 
   socklen_t len;
-  int n;
+  ssize_t n;
 
   // len = sizeof(receiveraddr); // len is value/result
 
-  n = recvfrom(sockfd, (char *)buffer, MAXLINE,
-               MSG_WAITALL, (struct sockaddr *)&senderaddr,
+  n = recvfrom(sockfd, buffer.data(), buffer.size(),
+               MSG_WAITALL, reinterpret_cast<struct sockaddr *>(&senderaddr),
                &len);
   buffer[n] = '\0';
-  printf("Client : %s\n", buffer);
+  std::cout << "Client :" << buffer.data() << std::endl;
   // sendto(sockfd, (const char *)hello, strlen(hello),
   //        0, (const struct sockaddr *)&receiveraddr,
   //        len);
@@ -148,6 +149,7 @@ void sender()
   int sockfd;
   char buffer[MAXLINE];
   const char *hello = "Hello from sender";
+
   struct sockaddr_in senderaddr, receiveraddr;
 
   if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
@@ -184,8 +186,8 @@ void sender()
   //              &len);
   // buffer[n] = '\0';
   // printf("Client : %s\n", buffer);
-  sendto(sockfd, (const char *)hello, strlen(hello),
-         0, (const struct sockaddr *)&receiveraddr,
+  sendto(sockfd, hello, strlen(hello),
+         0, reinterpret_cast<const struct sockaddr *>(&receiveraddr),
          len);
   std::cout << "sent message: " << hello << std::endl;
 }

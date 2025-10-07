@@ -384,6 +384,3 @@ private:
   std::string outputPath_;
   std::string configPath_;
 };
-
-void receiver();
-void sender();

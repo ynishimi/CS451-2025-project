@@ -3,14 +3,11 @@
 #include <thread>
 #include <array>
 
-#include <signal.h>
 #include "parser.hpp"
-#include "hello.h"
+#include "peer.hpp"
 
-static constexpr int SENDER_PORT = 10001;
-static constexpr int RECEIVER_PORT = 10002;
-static constexpr int RECEIVER_ID = 3;
-static constexpr int MAXLINE = 1024;
+#include <signal.h>
+#include "hello.h"
 
 static void stop(int)
 {
@@ -75,18 +72,8 @@ int main(int argc, char **argv)
 
   std::cout << "Broadcasting and delivering messages...\n\n";
 
-  const int receiver_id = RECEIVER_ID;
-
-  if (parser.id() == receiver_id)
-  {
-    // receiver
-    receiver();
-  }
-  else
-  {
-    // sender
-    sender();
-  }
+  Peer peer(parser);
+  peer.start();
 
   // After a process finishes broadcasting,
   // it waits forever for the delivery of messages.
@@ -96,98 +83,4 @@ int main(int argc, char **argv)
   }
 
   return 0;
-}
-
-void receiver()
-{
-  // File descriptor of a socket
-  int sockfd;
-  std::array<char, MAXLINE> buffer;
-  const char *hello = "Hello from receiver";
-  struct sockaddr_in senderaddr, receiveraddr;
-
-  if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
-  {
-    perror("socket creation failed");
-    exit(EXIT_FAILURE);
-  }
-  memset(&senderaddr, 0, sizeof(senderaddr));
-  memset(&receiveraddr, 0, sizeof(receiveraddr));
-
-  // Filling sender information
-  receiveraddr.sin_family = AF_INET; // IPv4
-  receiveraddr.sin_addr.s_addr = INADDR_ANY;
-  receiveraddr.sin_port = htons(RECEIVER_PORT);
-
-  // Bind the socket with the sender address
-  if (bind(sockfd, reinterpret_cast<const struct sockaddr *>(&receiveraddr),
-           sizeof(receiveraddr)) < 0)
-  {
-    perror("bind failed");
-    exit(EXIT_FAILURE);
-  }
-
-  socklen_t len;
-  ssize_t n;
-
-  // len = sizeof(receiveraddr); // len is value/result
-
-  n = recvfrom(sockfd, buffer.data(), buffer.size(),
-               MSG_WAITALL, reinterpret_cast<struct sockaddr *>(&senderaddr),
-               &len);
-  buffer[n] = '\0';
-  std::cout << "Client :" << buffer.data() << std::endl;
-  // sendto(sockfd, (const char *)hello, strlen(hello),
-  //        0, (const struct sockaddr *)&receiveraddr,
-  //        len);
-  std::cout << "sent message: " << hello << std::endl;
-}
-
-void sender()
-{
-  // File descriptor of a socket
-  int sockfd;
-  char buffer[MAXLINE];
-  const char *hello = "Hello from sender";
-
-  struct sockaddr_in senderaddr, receiveraddr;
-
-  if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
-  {
-    perror("socket creation failed");
-    exit(EXIT_FAILURE);
-  }
-  memset(&senderaddr, 0, sizeof(senderaddr));
-  memset(&receiveraddr, 0, sizeof(receiveraddr));
-
-  // Filling sender information
-  senderaddr.sin_family = AF_INET; // IPv4
-  senderaddr.sin_addr.s_addr = INADDR_ANY;
-  senderaddr.sin_port = htons(SENDER_PORT);
-  receiveraddr.sin_family = AF_INET; // IPv4
-  receiveraddr.sin_addr.s_addr = INADDR_ANY;
-  receiveraddr.sin_port = htons(RECEIVER_PORT);
-
-  // // Bind the socket with the sender address
-  // if (bind(sockfd, (const struct sockaddr *)&senderaddr,
-  //          sizeof(senderaddr)) < 0)
-  // {
-  //   perror("bind failed");
-  //   exit(EXIT_FAILURE);
-  // }
-
-  socklen_t len;
-  // int n;
-
-  len = sizeof(receiveraddr); // len is value/result
-
-  // n = recvfrom(sockfd, (char *)buffer, MAXLINE,
-  //              MSG_WAITALL, (struct sockaddr *)&cliaddr,
-  //              &len);
-  // buffer[n] = '\0';
-  // printf("Client : %s\n", buffer);
-  sendto(sockfd, hello, strlen(hello),
-         0, reinterpret_cast<const struct sockaddr *>(&receiveraddr),
-         len);
-  std::cout << "sent message: " << hello << std::endl;
 }

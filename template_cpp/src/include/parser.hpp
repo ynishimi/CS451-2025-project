@@ -213,8 +213,22 @@ public:
     return hosts;
   }
 
+  Host getHostFromId(unsigned long id)
+  {
+    std::vector<Host> hosts = this->hosts();
+    for (const auto &host : hosts)
+    {
+      if (host.id == id)
+      {
+        return host;
+      }
+    }
+    throw std::runtime_error("Host with id " + std::to_string(id) + " not found.");
+  }
+
 private:
-  bool parseInternal()
+  bool
+  parseInternal()
   {
     if (!parseID())
     {

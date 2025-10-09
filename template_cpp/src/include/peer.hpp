@@ -21,6 +21,7 @@ public:
 private:
   void receiver();
   void sender();
+  bool receiveAck(int sockfd);
 
 private:
   Parser parser_;

@@ -5,10 +5,14 @@
 static constexpr int RECEIVER_ID = 3;
 static constexpr int MAXLINE = 1024;
 static constexpr int NUM_MESSAGE = 10;
-void Peer::start() {
-  if (myId() == RECEIVER_ID) {
+void Peer::start()
+{
+  if (myId() == RECEIVER_ID)
+  {
     receiver();
-  } else {
+  }
+  else
+  {
     sender();
   }
 }
@@ -17,7 +21,8 @@ unsigned long Peer::myId() { return myId_; }
 Parser::Host Peer::myHost() { return myHost_; }
 Parser Peer::parser() { return parser_; }
 
-void Peer::sender() {
+void Peer::sender()
+{
   // File descriptor of a socket
   int sockfd;
   char buffer[MAXLINE];
@@ -25,7 +30,8 @@ void Peer::sender() {
 
   struct sockaddr_in senderaddr, receiveraddr;
 
-  if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+  if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+  {
     perror("socket creation failed");
     exit(EXIT_FAILURE);
   }
@@ -34,34 +40,38 @@ void Peer::sender() {
   tv.tv_sec = 1;
   tv.tv_usec = 100000;
 
-  if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+  if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0)
+  {
     perror("Error setting socket timeout");
     exit(EXIT_FAILURE);
   }
-  // memset(&senderaddr, 0, sizeof(senderaddr));
   memset(&receiveraddr, 0, sizeof(receiveraddr));
 
+  Parser::Host receiver_host = this->parser().getHostFromId(RECEIVER_ID);
   receiveraddr.sin_family = AF_INET; // IPv4
-  receiveraddr.sin_addr.s_addr = INADDR_ANY;
-  receiveraddr.sin_port = this->parser().getHostFromId(RECEIVER_ID).port;
+  receiveraddr.sin_addr.s_addr = receiver_host.ip;
+  receiveraddr.sin_port = receiver_host.port;
 
   socklen_t len = sizeof(receiveraddr); // len is value/result
 
-  for (int i = 0; i < NUM_MESSAGE; i++) {
+  for (int i = 0; i < NUM_MESSAGE; i++)
+  {
     bool acked = false;
-    while (!acked) {
+    while (!acked)
+    {
       std::string m = std::to_string(i + 1);
       sendto(sockfd, m.data(), m.size(), 0,
              reinterpret_cast<const struct sockaddr *>(&receiveraddr), len);
       std::cout << "sent message: " << m << std::endl;
 
       // receive ack
-      bool is_acked = receiveAck(sockfd);
+      acked = receiveAck(sockfd);
     }
   }
 }
 
-bool Peer::receiveAck(int sockfd) {
+bool Peer::receiveAck(int sockfd)
+{
   std::array<char, MAXLINE> buffer;
   struct sockaddr_in senderaddr, receiveraddr;
 
@@ -69,15 +79,17 @@ bool Peer::receiveAck(int sockfd) {
   memset(&receiveraddr, 0, sizeof(receiveraddr));
 
   // Filling sender information
+  Parser::Host my_host = this->myHost();
   receiveraddr.sin_family = AF_INET; // IPv4
-  receiveraddr.sin_addr.s_addr = INADDR_ANY;
-  receiveraddr.sin_port = this->myHost().port;
+  receiveraddr.sin_addr.s_addr = my_host.ip;
+  receiveraddr.sin_port = my_host.port;
 
   socklen_t len = sizeof(senderaddr);
   ssize_t n;
-  n = recvfrom(sockfd, buffer.data(), buffer.size(), MSG_WAITALL,
+  n = recvfrom(sockfd, buffer.data(), buffer.size(), 0,
                reinterpret_cast<struct sockaddr *>(&senderaddr), &len);
-  if (n < 0) {
+  if (n < 0)
+  {
     // recv timeout
     return false;
   }
@@ -86,13 +98,15 @@ bool Peer::receiveAck(int sockfd) {
   return true;
 }
 
-void Peer::receiver() {
+void Peer::receiver()
+{
   // File descriptor of a socket
   int sockfd;
   std::array<char, MAXLINE> buffer;
   struct sockaddr_in senderaddr, receiveraddr;
 
-  if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+  if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+  {
     perror("socket creation failed");
     exit(EXIT_FAILURE);
   }
@@ -106,7 +120,8 @@ void Peer::receiver() {
 
   // Bind the socket with the sender address
   if (bind(sockfd, reinterpret_cast<const struct sockaddr *>(&receiveraddr),
-           sizeof(receiveraddr)) < 0) {
+           sizeof(receiveraddr)) < 0)
+  {
     perror("bind failed");
     exit(EXIT_FAILURE);
   }

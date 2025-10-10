@@ -1,10 +1,13 @@
 #include "peer.hpp"
 
 #include <string>
+#include <unordered_set>
 
 static constexpr int RECEIVER_ID = 3;
 static constexpr int MAXLINE = 1024;
 static constexpr int NUM_MESSAGE = 10;
+static string FILEPATH_SENDER = "../example/output/1.output";
+
 void Peer::start()
 {
   if (myId() == RECEIVER_ID)
@@ -66,6 +69,7 @@ void Peer::sender()
 
       // receive ack
       acked = receiveAck(sockfd);
+      std::cout << "acked: " << acked << std::endl;
     }
   }
 }
@@ -94,7 +98,7 @@ bool Peer::receiveAck(int sockfd)
     return false;
   }
   buffer[n] = '\0';
-  std::cout << "Client :" << buffer.data() << std::endl;
+  std::cout << "Received ack :" << buffer.data() << std::endl;
   return true;
 }
 
@@ -104,6 +108,7 @@ void Peer::receiver()
   int sockfd;
   std::array<char, MAXLINE> buffer;
   struct sockaddr_in senderaddr, receiveraddr;
+  unordered_set<string> messages;
 
   if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
   {
@@ -127,10 +132,31 @@ void Peer::receiver()
   }
 
   socklen_t len = sizeof(senderaddr);
-  ;
   ssize_t n;
-  n = recvfrom(sockfd, buffer.data(), buffer.size(), MSG_WAITALL,
-               reinterpret_cast<struct sockaddr *>(&senderaddr), &len);
-  buffer[n] = '\0';
-  std::cout << "Client :" << buffer.data() << std::endl;
+  while (true)
+  {
+    n = recvfrom(sockfd, buffer.data(), buffer.size(), MSG_WAITALL,
+                 reinterpret_cast<struct sockaddr *>(&senderaddr), &len);
+    if (n < 0)
+    {
+      return;
+    }
+    buffer[n] = '\0';
+    std::cout << "Received from " << senderaddr.sin_addr.s_addr << ":" << buffer.data() << std::endl;
+    string m = buffer.data();
+    auto it = messages.find(m);
+    if (it == messages.end())
+    {
+      messages.insert(m);
+      sendAck(sockfd, m, senderaddr);
+    }
+  }
+}
+
+void Peer::sendAck(int sockfd, string m, sockaddr_in senderaddr)
+{
+  socklen_t len = sizeof(senderaddr);
+  sendto(sockfd, m.data(), m.size(), 0,
+         reinterpret_cast<const struct sockaddr *>(&senderaddr), len);
+  std::cout << "Sent ack: " << m << std::endl;
 }

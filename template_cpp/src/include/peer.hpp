@@ -1,6 +1,8 @@
 #pragma once
 #include "parser.hpp"
 
+using namespace std;
+
 class Peer
 {
 public:
@@ -20,8 +22,9 @@ public:
 
 private:
   void receiver();
-  void sender();
   bool receiveAck(int sockfd);
+  void sender();
+  void sendAck(int sockfd, string m, sockaddr_in senderaddr);
 
 private:
   Parser parser_;

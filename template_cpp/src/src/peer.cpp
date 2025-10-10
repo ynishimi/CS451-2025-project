@@ -3,14 +3,24 @@
 #include <string>
 #include <unordered_set>
 
-static constexpr int RECEIVER_ID = 3;
 static constexpr int MAXLINE = 1024;
-static constexpr int NUM_MESSAGE = 10;
-static string FILEPATH_SENDER = "../example/output/1.output";
 
 void Peer::start()
 {
-  if (myId() == RECEIVER_ID)
+  // read config file
+  ifstream configFile(this->configPath_);
+  string line;
+  int num_messages, receiver_id;
+  getline(configFile, line);
+  stringstream ss(line);
+  ss >> num_messages >> receiver_id;
+  configFile.close();
+
+  setNumMessages(num_messages);
+  setReceiverId(receiver_id);
+
+  cout << receiver_id << endl;
+  if (myId() == static_cast<unsigned long>(receiver_id))
   {
     receiver();
   }
@@ -23,13 +33,22 @@ void Peer::start()
 unsigned long Peer::myId() { return myId_; }
 Parser::Host Peer::myHost() { return myHost_; }
 Parser Peer::parser() { return parser_; }
+void Peer::setReceiverId(int receiverId)
+{
+  receiverId_ = receiverId;
+}
+void Peer::setNumMessages(int numMessages)
+{
+  numMessages_ = numMessages;
+}
 
 void Peer::sender()
 {
   // File descriptor of a socket
   int sockfd;
   char buffer[MAXLINE];
-  std::string hello = "Hello from sender " + std::to_string(parser_.id());
+  // std::string hello = "Hello from sender " + std::to_string(parser_.id());
+  ofstream outputFile(outputPath_);
 
   struct sockaddr_in senderaddr, receiveraddr;
 
@@ -50,19 +69,19 @@ void Peer::sender()
   }
   memset(&receiveraddr, 0, sizeof(receiveraddr));
 
-  Parser::Host receiver_host = this->parser().getHostFromId(RECEIVER_ID);
+  Parser::Host receiver_host = this->parser().getHostFromId(receiverId_);
   receiveraddr.sin_family = AF_INET; // IPv4
   receiveraddr.sin_addr.s_addr = receiver_host.ip;
   receiveraddr.sin_port = receiver_host.port;
 
   socklen_t len = sizeof(receiveraddr); // len is value/result
 
-  for (int i = 0; i < NUM_MESSAGE; i++)
+  for (int i = 0; i < numMessages_; i++)
   {
     bool acked = false;
+    std::string m = std::to_string(i + 1);
     while (!acked)
     {
-      std::string m = std::to_string(i + 1);
       sendto(sockfd, m.data(), m.size(), 0,
              reinterpret_cast<const struct sockaddr *>(&receiveraddr), len);
       std::cout << "sent message: " << m << std::endl;
@@ -71,6 +90,7 @@ void Peer::sender()
       acked = receiveAck(sockfd);
       std::cout << "acked: " << acked << std::endl;
     }
+    outputFile << "b " << m << endl;
   }
 }
 
@@ -109,6 +129,7 @@ void Peer::receiver()
   std::array<char, MAXLINE> buffer;
   struct sockaddr_in senderaddr, receiveraddr;
   unordered_set<string> messages;
+  ofstream outputFile(outputPath_);
 
   if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
   {
@@ -142,13 +163,15 @@ void Peer::receiver()
       return;
     }
     buffer[n] = '\0';
-    std::cout << "Received from " << senderaddr.sin_addr.s_addr << ":" << buffer.data() << std::endl;
+    std::cout << "Received from " << senderaddr.sin_addr.s_addr << ": " << buffer.data() << std::endl;
     string m = buffer.data();
     auto it = messages.find(m);
     if (it == messages.end())
     {
       messages.insert(m);
       sendAck(sockfd, m, senderaddr);
+      Parser::Host host = parser_.getHostFromAddr(senderaddr);
+      outputFile << "d " << host.id << " " << m << endl;
     }
   }
 }

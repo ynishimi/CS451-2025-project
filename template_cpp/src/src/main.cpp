@@ -72,7 +72,7 @@ int main(int argc, char **argv)
 
   std::cout << "Broadcasting and delivering messages...\n\n";
 
-  Peer peer(parser);
+  Peer peer(parser, parser.configPath(), parser.outputPath());
   peer.start();
 
   // After a process finishes broadcasting,

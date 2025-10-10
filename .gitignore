@@ -1,3 +1,5 @@
 **/.DS_Store
 **/build
 .vscode/settings.json
+log/*
+example/output/*

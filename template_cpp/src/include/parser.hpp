@@ -225,18 +225,18 @@ public:
     }
     throw std::runtime_error("Host with id " + std::to_string(id) + " not found.");
   }
-  Host getHostFromAddr(sockaddr_in addr)
-  {
-    std::vector<Host> hosts = this->hosts();
-    for (const auto &host : hosts)
-    {
-      if (host.ip == addr.sin_addr.s_addr)
-      {
-        return host;
-      }
-    }
-    throw std::runtime_error("Host with addr " + std::to_string(addr.sin_addr.s_addr) + " not found.");
-  }
+  // Host getHostFromAddr(sockaddr_in addr)
+  // {
+  //   std::vector<Host> hosts = this->hosts();
+  //   for (const auto &host : hosts)
+  //   {
+  //     if (host.ip == addr.sin_addr.s_addr)
+  //     {
+  //       return host;
+  //     }
+  //   }
+  //   throw std::runtime_error("Host with addr " + std::to_string(addr.sin_addr.s_addr) + " not found.");
+  // }
 
 private:
   bool

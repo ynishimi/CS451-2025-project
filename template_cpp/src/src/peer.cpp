@@ -1,4 +1,5 @@
 #include "peer.hpp"
+#include "msg.hpp"
 
 #include <string>
 #include <unordered_set>
@@ -47,7 +48,6 @@ void Peer::sender()
   // File descriptor of a socket
   int sockfd;
   char buffer[MAXLINE];
-  // std::string hello = "Hello from sender " + std::to_string(parser_.id());
   ofstream outputFile(outputPath_);
 
   struct sockaddr_in senderaddr, receiveraddr;
@@ -79,18 +79,19 @@ void Peer::sender()
   for (int i = 0; i < numMessages_; i++)
   {
     bool acked = false;
-    std::string m = std::to_string(i + 1);
+    Msg msg{myId(), std::to_string(i + 1)};
+    string serialized_msg = msg.serialize();
     while (!acked)
     {
-      sendto(sockfd, m.data(), m.size(), 0,
+      sendto(sockfd, serialized_msg.data(), serialized_msg.size(), 0,
              reinterpret_cast<const struct sockaddr *>(&receiveraddr), len);
-      std::cout << "sent message: " << m << std::endl;
+      std::cout << "sent message: " << serialized_msg << std::endl;
 
       // receive ack
       acked = receiveAck(sockfd);
       std::cout << "acked: " << acked << std::endl;
     }
-    outputFile << "b " << m << endl;
+    outputFile << "b " << msg.getM() << endl;
   }
 }
 
@@ -118,7 +119,9 @@ bool Peer::receiveAck(int sockfd)
     return false;
   }
   buffer[n] = '\0';
-  std::cout << "Received ack :" << buffer.data() << std::endl;
+  Msg msg{};
+  msg.deserialize(buffer.data());
+  std::cout << "Received ack from " << msg.getId() << ": " << msg.getM() << std::endl;
   return true;
 }
 
@@ -164,13 +167,19 @@ void Peer::receiver()
     }
     buffer[n] = '\0';
     std::cout << "Received from " << senderaddr.sin_addr.s_addr << ": " << buffer.data() << std::endl;
-    string m = buffer.data();
+    string m_serialized = buffer.data();
+    cout << "m_s " << m_serialized << endl;
+    Msg msg{};
+    msg.deserialize(m_serialized);
+    unsigned long id = msg.getId();
+    string m = msg.getM();
     auto it = messages.find(m);
     if (it == messages.end())
     {
       messages.insert(m);
       sendAck(sockfd, m, senderaddr);
-      Parser::Host host = parser_.getHostFromAddr(senderaddr);
+
+      Parser::Host host = parser_.getHostFromId(msg.getId());
       outputFile << "d " << host.id << " " << m << endl;
     }
   }

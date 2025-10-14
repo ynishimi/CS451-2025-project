@@ -20,7 +20,6 @@ void Peer::start()
   setNumMessages(num_messages);
   setReceiverId(receiver_id);
 
-  cout << receiver_id << endl;
   if (myId() == static_cast<unsigned long>(receiver_id))
   {
     receiver();
@@ -121,8 +120,12 @@ bool Peer::receiveAck(int sockfd)
   buffer[n] = '\0';
   Msg msg{};
   msg.deserialize(buffer.data());
-  std::cout << "Received ack from " << msg.getId() << ": " << msg.getM() << std::endl;
-  return true;
+  if (msg.getId() == myId())
+  {
+    std::cout << "Received ack from " << msg.getId() << ": " << msg.getM() << std::endl;
+    return true;
+  }
+  return false;
 }
 
 void Peer::receiver()
@@ -166,29 +169,30 @@ void Peer::receiver()
       return;
     }
     buffer[n] = '\0';
-    std::cout << "Received from " << senderaddr.sin_addr.s_addr << ": " << buffer.data() << std::endl;
     string m_serialized = buffer.data();
-    cout << "m_s " << m_serialized << endl;
-    Msg msg{};
-    msg.deserialize(m_serialized);
-    unsigned long id = msg.getId();
-    string m = msg.getM();
-    auto it = messages.find(m);
+    cout << "received payload: " << m_serialized << endl;
+    auto it = messages.find(m_serialized);
     if (it == messages.end())
     {
-      messages.insert(m);
-      sendAck(sockfd, m, senderaddr);
+      // a new message
+      messages.insert(m_serialized);
 
+      Msg msg{};
+      msg.deserialize(m_serialized);
+      unsigned long id = msg.getId();
+      string m = msg.getM();
       Parser::Host host = parser_.getHostFromId(msg.getId());
       outputFile << "d " << host.id << " " << m << endl;
     }
+
+    sendAck(sockfd, m_serialized, senderaddr);
   }
 }
 
-void Peer::sendAck(int sockfd, string m, sockaddr_in senderaddr)
+void Peer::sendAck(int sockfd, string m_serialized, sockaddr_in senderaddr)
 {
   socklen_t len = sizeof(senderaddr);
-  sendto(sockfd, m.data(), m.size(), 0,
+  sendto(sockfd, m_serialized.data(), m_serialized.size(), 0,
          reinterpret_cast<const struct sockaddr *>(&senderaddr), len);
-  std::cout << "Sent ack: " << m << std::endl;
+  std::cout << "Sent ack: " << m_serialized << std::endl;
 }

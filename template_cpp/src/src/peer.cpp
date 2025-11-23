@@ -54,13 +54,14 @@ void Peer::sender()
 }
 
 // best-effort broadcast
-void Peer::bebSend(Msg m)
+void Peer::bebSend(Msg msg)
 {
   // for all p, addSendlist message
   for (auto &host : parser_.hosts())
   {
-    pl_.addSendlist(host, m);
-    pl_.send(sockfd_, host, m);
+    std::cout << "bebSend: " << host.srcId << "msg: " << msg.m << std::endl;
+    pl_.addSendlist(host, msg);
+    pl_.send(sockfd_, host, msg);
   }
 }
 

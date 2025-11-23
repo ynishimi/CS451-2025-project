@@ -29,6 +29,7 @@ void PerfectLink::send(int sockfd, Parser::Host dest, Msg msg)
 // resend unacked messages
 void PerfectLink::resend(int sockfd)
 {
+    std::cout << "resend message(s)" << std::endl;
     lock_guard<mutex> lock(mu_);
     for (auto &item : sendlist_)
     {

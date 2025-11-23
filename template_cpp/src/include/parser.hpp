@@ -269,7 +269,7 @@ private:
   {
     auto configStr = "CONFIG";
     std::cerr << "Usage: " << argv[0]
-              << " --srcId ID --hosts HOSTS --output OUTPUT";
+              << " --id ID --hosts HOSTS --output OUTPUT";
 
     if (!withConfig)
     {
@@ -290,7 +290,7 @@ private:
       return false;
     }
 
-    if (std::strcmp(argv[1], "--srcId") == 0)
+    if (std::strcmp(argv[1], "--id") == 0)
     {
       if (isPositiveNumber(argv[2]))
       {

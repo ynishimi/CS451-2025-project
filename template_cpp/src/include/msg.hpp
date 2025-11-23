@@ -16,15 +16,7 @@ enum class MessageType
 
 inline string enum_to_string(MessageType type)
 {
-    switch (type)
-    {
-    case MessageType::DATA:
-        return "DATA";
-    case MessageType::ACK:
-        return "ACK";
-    default:
-        return "";
-    }
+    return to_string(static_cast<int>(type));
 }
 
 class Msg
@@ -51,7 +43,7 @@ public:
     void deserialize(string serialized_m)
     {
         auto delim1 = serialized_m.find(':');
-        this->type = static_cast<MessageType>(stoul(serialized_m.substr(0, delim1)));
+        this->type = static_cast<MessageType>(stoi(serialized_m.substr(0, delim1)));
         string remaining_str = serialized_m.substr(delim1 + 1);
         auto delim2 = remaining_str.find(':');
         this->src_id = stoul(remaining_str.substr(0, delim2));

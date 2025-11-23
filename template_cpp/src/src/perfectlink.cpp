@@ -8,7 +8,7 @@ void PerfectLink::addSendlist(Parser::Host dest, Msg msg)
     sendlist_.push_back(make_tuple(dest, msg));
 }
 
-void PerfectLink::send(int &sockfd, Parser::Host dest, Msg msg)
+void PerfectLink::send(int sockfd, Parser::Host dest, Msg msg)
 {
     // receiver-specific setting
     struct sockaddr_in destAddr;
@@ -27,7 +27,7 @@ void PerfectLink::send(int &sockfd, Parser::Host dest, Msg msg)
 }
 
 // resend unacked messages
-void PerfectLink::resend(int &sockfd)
+void PerfectLink::resend(int sockfd)
 {
     lock_guard<mutex> lock(mu_);
     for (auto &item : sendlist_)
@@ -36,11 +36,11 @@ void PerfectLink::resend(int &sockfd)
     }
 }
 
-void PerfectLink::onPacketReceived(int &sockfd, Parser::Host myHost, Parser::Host srcHost, Msg msg)
+void PerfectLink::onPacketReceived(int sockfd, Parser::Host myHost, Parser::Host srcHost, Msg msg)
 {
     lock_guard<mutex> lock(mu_);
 
-    if (msg.type == ACK)
+    if (msg.type == MessageType::ACK)
     {
         for (auto it = sendlist_.begin(); it != sendlist_.end();)
         {
@@ -56,9 +56,9 @@ void PerfectLink::onPacketReceived(int &sockfd, Parser::Host myHost, Parser::Hos
             }
         }
     }
-    else if (msg.type == DATA)
+    else if (msg.type == MessageType::DATA)
     {
-        Msg ackMsg(ACK, myHost.srcId, msg.m);
+        Msg ackMsg(MessageType::ACK, myHost.srcId, msg.m);
 
         // todo: process data?
         // outputFile << "d " << host.srcId << " " << m << endl;
@@ -67,7 +67,7 @@ void PerfectLink::onPacketReceived(int &sockfd, Parser::Host myHost, Parser::Hos
     }
 }
 
-void PerfectLink::sendAck(int &sockfd, Parser::Host srcHost, Msg ackMsg)
+void PerfectLink::sendAck(int sockfd, Parser::Host srcHost, Msg ackMsg)
 {
     send(sockfd, srcHost, ackMsg);
     std::cout << "Sent ack" << std::endl;

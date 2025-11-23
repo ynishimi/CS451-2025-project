@@ -1,7 +1,9 @@
+#pragma once
 #include <mutex>
 #include <tuple>
 #include <vector>
 
+#include "perfectlink.hpp"
 #include "parser.hpp"
 #include "msg.hpp"
 
@@ -12,12 +14,12 @@ class PerfectLink
 public:
     PerfectLink() {}
     void addSendlist(Parser::Host dest, Msg m);
-    void resend(int &sockfd);
-    void onPacketReceived(int &sockfd, Parser::Host myHost, Parser::Host srcHost, Msg msg);
+    void send(int sockfd, Parser::Host dest, Msg m);
+    void resend(int sockfd);
+    void onPacketReceived(int sockfd, Parser::Host myHost, Parser::Host srcHost, Msg msg);
 
 private:
-    void send(int &sockfd, Parser::Host dest, Msg m);
-    void sendAck(int &sockfd, Parser::Host myHost, Msg msg);
+    void sendAck(int sockfd, Parser::Host myHost, Msg msg);
 
 private:
     bool acked_;

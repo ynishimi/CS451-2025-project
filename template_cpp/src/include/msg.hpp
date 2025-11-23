@@ -1,15 +1,31 @@
+#pragma once
 // C++ Program to illustrate how we can serialize and
 // deserialize an object
+
 #include <fstream>
 #include <iostream>
 #include <string>
+
 using namespace std;
 
-enum MessageType
+enum class MessageType
 {
     DATA,
     ACK,
 };
+
+inline string enum_to_string(MessageType type)
+{
+    switch (type)
+    {
+    case MessageType::DATA:
+        return "DATA";
+    case MessageType::ACK:
+        return "ACK";
+    default:
+        return "";
+    }
+}
 
 class Msg
 {
@@ -28,14 +44,14 @@ public:
     //  Function for Serialization
     string serialize()
     {
-        return to_string(type) + ':' + to_string(src_id) + ':' + m;
+        return enum_to_string(type) + ':' + to_string(src_id) + ':' + m;
     }
 
     //  Function for Deserialization
     void deserialize(string serialized_m)
     {
         auto delim1 = serialized_m.find(':');
-        this->type = (MessageType)stoul(serialized_m.substr(0, delim1));
+        this->type = static_cast<MessageType>(stoul(serialized_m.substr(0, delim1)));
         string remaining_str = serialized_m.substr(delim1 + 1);
         auto delim2 = remaining_str.find(':');
         this->src_id = stoul(remaining_str.substr(0, delim2));

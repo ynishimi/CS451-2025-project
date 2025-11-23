@@ -134,7 +134,7 @@ void Peer::receiver()
     pl_.onPacketReceived(sockfd_, myHost_, srcHost, msg);
 
     // find duplication
-    if (msg.type == DATA)
+    if (msg.type == MessageType::DATA)
     {
       auto it = delivered_msgs.find(m_serialized);
       if (it == delivered_msgs.end())

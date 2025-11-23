@@ -1,6 +1,7 @@
 #pragma once
 #include "parser.hpp"
-
+#include "msg.hpp"
+#include "perfectlink.hpp"
 using namespace std;
 
 class Peer

@@ -25,8 +25,8 @@ public:
   struct Host
   {
     Host() {}
-    Host(size_t id, std::string &ip_or_hostname, unsigned short port)
-        : id{id}, port{htons(port)}
+    Host(size_t srcId, std::string &ip_or_hostname, unsigned short port)
+        : srcId{srcId}, port{htons(port)}
     {
 
       if (isValidIpAddress(ip_or_hostname.c_str()))
@@ -48,7 +48,7 @@ public:
 
     unsigned short portReadable() const { return ntohs(port); }
 
-    unsigned long id;
+    unsigned long srcId;
     in_addr_t ip;
     unsigned short port;
 
@@ -117,7 +117,7 @@ public:
     parsed = true;
   }
 
-  unsigned long id() const
+  unsigned long srcId() const
   {
     checkParsed();
     return id_;
@@ -172,18 +172,18 @@ public:
         continue;
       }
 
-      unsigned long id;
+      unsigned long srcId;
       std::string ip;
       unsigned short port;
 
-      if (!(iss >> id >> ip >> port))
+      if (!(iss >> srcId >> ip >> port))
       {
         std::ostringstream os;
         os << "Parsing for `" << hostsPath() << "` failed at line " << lineNum;
         throw std::invalid_argument(os.str());
       }
 
-      hosts.push_back(Host(id, ip, port));
+      hosts.push_back(Host(srcId, ip, port));
     }
 
     if (hosts.size() < 2UL)
@@ -194,10 +194,10 @@ public:
     }
 
     auto comp = [](const Host &x, const Host &y)
-    { return x.id < y.id; };
+    { return x.srcId < y.srcId; };
     auto result = std::minmax_element(hosts.begin(), hosts.end(), comp);
-    size_t minID = (*result.first).id;
-    size_t maxID = (*result.second).id;
+    size_t minID = (*result.first).srcId;
+    size_t maxID = (*result.second).srcId;
     if (minID != 1UL || maxID != static_cast<unsigned long>(hosts.size()))
     {
       std::ostringstream os;
@@ -208,22 +208,22 @@ public:
 
     std::sort(hosts.begin(), hosts.end(),
               [](const Host &a, const Host &b) -> bool
-              { return a.id < b.id; });
+              { return a.srcId < b.srcId; });
 
     return hosts;
   }
 
-  Host getHostFromId(unsigned long id)
+  Host getHostFromId(unsigned long srcId)
   {
     std::vector<Host> hosts = this->hosts();
     for (const auto &host : hosts)
     {
-      if (host.id == id)
+      if (host.srcId == srcId)
       {
         return host;
       }
     }
-    throw std::runtime_error("Host with id " + std::to_string(id) + " not found.");
+    throw std::runtime_error("Host with srcId " + std::to_string(srcId) + " not found.");
   }
   // Host getHostFromAddr(sockaddr_in addr)
   // {
@@ -269,7 +269,7 @@ private:
   {
     auto configStr = "CONFIG";
     std::cerr << "Usage: " << argv[0]
-              << " --id ID --hosts HOSTS --output OUTPUT";
+              << " --srcId ID --hosts HOSTS --output OUTPUT";
 
     if (!withConfig)
     {
@@ -290,7 +290,7 @@ private:
       return false;
     }
 
-    if (std::strcmp(argv[1], "--id") == 0)
+    if (std::strcmp(argv[1], "--srcId") == 0)
     {
       if (isPositiveNumber(argv[2]))
       {

@@ -44,14 +44,14 @@ int main(int argc, char **argv)
   std::cout << "From a new terminal type `kill -SIGINT " << getpid() << "` or `kill -SIGTERM "
             << getpid() << "` to stop processing packets\n\n";
 
-  std::cout << "My ID: " << parser.id() << "\n\n";
+  std::cout << "My ID: " << parser.srcId() << "\n\n";
 
   std::cout << "List of resolved hosts is:\n";
   std::cout << "==========================\n";
   auto hosts = parser.hosts();
   for (auto &host : hosts)
   {
-    std::cout << host.id << "\n";
+    std::cout << host.srcId << "\n";
     std::cout << "Human-readable IP: " << host.ipReadable() << "\n";
     std::cout << "Machine-readable IP: " << host.ip << "\n";
     std::cout << "Human-readbale Port: " << host.portReadable() << "\n";

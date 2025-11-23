@@ -1,8 +1,9 @@
 #include "peer.hpp"
 #include "msg.hpp"
-
+#include "perfectlink.hpp"
 #include <string>
 #include <unordered_set>
+#include <thread>
 
 static constexpr int MAXLINE = 1024;
 
@@ -11,32 +12,23 @@ void Peer::start()
   // read config file
   ifstream configFile(this->configPath_);
   string line;
-  int num_messages, receiver_id;
+  int num_messages;
   getline(configFile, line);
   stringstream ss(line);
-  ss >> num_messages >> receiver_id;
+  ss >> num_messages;
   configFile.close();
-
+  createSocket();
   setNumMessages(num_messages);
-  setReceiverId(receiver_id);
 
-  if (myId() == static_cast<unsigned long>(receiver_id))
-  {
-    receiver();
-  }
-  else
-  {
-    sender();
-  }
+  std::thread receiver_thread(&Peer::receiver, this);
+  sender();
+
+  receiver_thread.join();
 }
 
 unsigned long Peer::myId() { return myId_; }
 Parser::Host Peer::myHost() { return myHost_; }
 Parser Peer::parser() { return parser_; }
-void Peer::setReceiverId(int receiverId)
-{
-  receiverId_ = receiverId;
-}
 void Peer::setNumMessages(int numMessages)
 {
   numMessages_ = numMessages;
@@ -44,14 +36,44 @@ void Peer::setNumMessages(int numMessages)
 
 void Peer::sender()
 {
+
+  for (int i = 1; i <= numMessages_; i++)
+  {
+    Msg msg(MessageType::DATA, this->myId(), to_string(i));
+    bebSend(msg);
+  }
+
+  while (true)
+  {
+    // wait for 1s
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    {
+      pl_.resend(sockfd_);
+    }
+  }
+}
+
+// best-effort broadcast
+void Peer::bebSend(Msg m)
+{
+  // for all p, addSendlist message
+  for (auto &host : parser_.hosts())
+  {
+    pl_.addSendlist(host, m);
+    pl_.send(sockfd_, host, m);
+  }
+}
+
+void Peer::createSocket()
+{
+  // initialization of socket
   // File descriptor of a socket
-  int sockfd;
   char buffer[MAXLINE];
   ofstream outputFile(outputPath_);
 
-  struct sockaddr_in senderaddr, receiveraddr;
+  // struct sockaddr_in senderaddr, receiveraddr;
 
-  if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+  if ((sockfd_ = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
   {
     perror("socket creation failed");
     exit(EXIT_FAILURE);
@@ -61,138 +83,67 @@ void Peer::sender()
   tv.tv_sec = 1;
   tv.tv_usec = 100000;
 
-  if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0)
+  if (setsockopt(sockfd_, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0)
   {
     perror("Error setting socket timeout");
     exit(EXIT_FAILURE);
   }
-  memset(&receiveraddr, 0, sizeof(receiveraddr));
 
-  Parser::Host receiver_host = this->parser().getHostFromId(receiverId_);
-  receiveraddr.sin_family = AF_INET; // IPv4
-  receiveraddr.sin_addr.s_addr = receiver_host.ip;
-  receiveraddr.sin_port = receiver_host.port;
+  // bind setting (for receiver)
+  struct sockaddr_in myaddr;
+  memset(&myaddr, 0, sizeof(myaddr));
 
-  socklen_t len = sizeof(receiveraddr); // len is value/result
+  myaddr.sin_family = AF_INET; // IPv4
+  myaddr.sin_addr.s_addr = INADDR_ANY;
+  myaddr.sin_port = this->myHost().port;
 
-  for (int i = 0; i < numMessages_; i++)
-  {
-    bool acked = false;
-    Msg msg{myId(), std::to_string(i + 1)};
-    string serialized_msg = msg.serialize();
-    while (!acked)
-    {
-      sendto(sockfd, serialized_msg.data(), serialized_msg.size(), 0,
-             reinterpret_cast<const struct sockaddr *>(&receiveraddr), len);
-      std::cout << "sent message: " << serialized_msg << std::endl;
-
-      // receive ack
-      acked = receiveAck(sockfd);
-      std::cout << "acked: " << acked << std::endl;
-    }
-    outputFile << "b " << msg.getM() << endl;
-  }
-}
-
-bool Peer::receiveAck(int sockfd)
-{
-  std::array<char, MAXLINE> buffer;
-  struct sockaddr_in senderaddr, receiveraddr;
-
-  memset(&senderaddr, 0, sizeof(senderaddr));
-  memset(&receiveraddr, 0, sizeof(receiveraddr));
-
-  // Filling sender information
-  Parser::Host my_host = this->myHost();
-  receiveraddr.sin_family = AF_INET; // IPv4
-  receiveraddr.sin_addr.s_addr = my_host.ip;
-  receiveraddr.sin_port = my_host.port;
-
-  socklen_t len = sizeof(senderaddr);
-  ssize_t n;
-  n = recvfrom(sockfd, buffer.data(), buffer.size(), 0,
-               reinterpret_cast<struct sockaddr *>(&senderaddr), &len);
-  if (n < 0)
-  {
-    // recv timeout
-    return false;
-  }
-  buffer[n] = '\0';
-  Msg msg{};
-  msg.deserialize(buffer.data());
-  if (msg.getId() == myId())
-  {
-    std::cout << "Received ack from " << msg.getId() << ": " << msg.getM() << std::endl;
-    return true;
-  }
-  return false;
-}
-
-void Peer::receiver()
-{
-  // File descriptor of a socket
-  int sockfd;
-  std::array<char, MAXLINE> buffer;
-  struct sockaddr_in senderaddr, receiveraddr;
-  unordered_set<string> messages;
-  ofstream outputFile(outputPath_);
-
-  if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
-  {
-    perror("socket creation failed");
-    exit(EXIT_FAILURE);
-  }
-  memset(&senderaddr, 0, sizeof(senderaddr));
-  memset(&receiveraddr, 0, sizeof(receiveraddr));
-
-  // Filling sender information
-  receiveraddr.sin_family = AF_INET; // IPv4
-  receiveraddr.sin_addr.s_addr = INADDR_ANY;
-  receiveraddr.sin_port = this->myHost().port;
-
-  // Bind the socket with the sender address
-  if (bind(sockfd, reinterpret_cast<const struct sockaddr *>(&receiveraddr),
-           sizeof(receiveraddr)) < 0)
+  if (bind(sockfd_, reinterpret_cast<const struct sockaddr *>(&myaddr),
+           sizeof(myaddr)) < 0)
   {
     perror("bind failed");
     exit(EXIT_FAILURE);
   }
+}
 
-  socklen_t len = sizeof(senderaddr);
+void Peer::receiver()
+{
+  std::array<char, MAXLINE> buffer;
+  struct sockaddr_in senderaddr;
+  unordered_set<string> delivered_msgs;
+  ofstream outputFile(outputPath_);
   ssize_t n;
   while (true)
   {
-    n = recvfrom(sockfd, buffer.data(), buffer.size(), MSG_WAITALL,
+    socklen_t len = sizeof(senderaddr);
+    n = recvfrom(sockfd_, buffer.data(), buffer.size(), MSG_WAITALL,
                  reinterpret_cast<struct sockaddr *>(&senderaddr), &len);
     if (n < 0)
     {
-      return;
+      // timeout
+      continue;
     }
     buffer[n] = '\0';
     string m_serialized = buffer.data();
-    cout << "received payload: " << m_serialized << endl;
-    auto it = messages.find(m_serialized);
-    if (it == messages.end())
+    // cout << "received payload: " << m_serialized << endl;
+
+    // send ack or process data
+    Msg msg{};
+    msg.deserialize(m_serialized);
+    unsigned long src_id = msg.src_id;
+    Parser::Host srcHost = parser_.getHostFromId(src_id);
+    pl_.onPacketReceived(sockfd_, myHost_, srcHost, msg);
+
+    // find duplication
+    if (msg.type == DATA)
     {
-      // a new message
-      messages.insert(m_serialized);
+      auto it = delivered_msgs.find(m_serialized);
+      if (it == delivered_msgs.end())
+      {
+        // a new message
+        delivered_msgs.insert(m_serialized);
 
-      Msg msg{};
-      msg.deserialize(m_serialized);
-      unsigned long id = msg.getId();
-      string m = msg.getM();
-      Parser::Host host = parser_.getHostFromId(msg.getId());
-      outputFile << "d " << host.id << " " << m << endl;
+        outputFile << "d " << msg.src_id << " " << msg.m << endl;
+      }
     }
-
-    sendAck(sockfd, m_serialized, senderaddr);
   }
-}
-
-void Peer::sendAck(int sockfd, string m_serialized, sockaddr_in senderaddr)
-{
-  socklen_t len = sizeof(senderaddr);
-  sendto(sockfd, m_serialized.data(), m_serialized.size(), 0,
-         reinterpret_cast<const struct sockaddr *>(&senderaddr), len);
-  std::cout << "Sent ack: " << m_serialized << std::endl;
 }

@@ -60,7 +60,7 @@ void PerfectLink::onPacketReceived(int sockfd, Parser::Host myHost, Parser::Host
     else if (msg.type == MessageType::DATA)
     {
         // send ackMsg. relay == src
-        Msg ackMsg(MessageType::ACK, myHost.srcId, myHost.srcId, msg.m);
+        Msg ackMsg(MessageType::ACK, myHost.srcId, msg.seq_id, myHost.srcId, msg.m);
 
         sendAck(sockfd, srcHost, ackMsg);
     }

@@ -24,8 +24,8 @@ class Msg
 public:
     Msg() {};
     // Constructor to initialize the data members
-    Msg(MessageType type, unsigned long src_id, unsigned long relay_id, const string &m)
-        : type(type), src_id(src_id), relay_id(relay_id), m(m)
+    Msg(MessageType type, unsigned long src_id, unsigned int seq_id, unsigned long relay_id, const string &m)
+        : type(type), src_id(src_id), seq_id(seq_id), relay_id(relay_id), m(m)
     {
     }
 
@@ -36,7 +36,7 @@ public:
     //  Function for Serialization
     string serialize()
     {
-        return enum_to_string(type) + ':' + to_string(src_id) + ':' + to_string(relay_id) + ':' + m;
+        return enum_to_string(type) + ':' + to_string(src_id) + ':' + to_string(seq_id) + ':' + to_string(relay_id) + ':' + m;
     }
 
     //  Function for Deserialization
@@ -49,13 +49,22 @@ public:
         this->src_id = stoul(remaining_str.substr(0, delim2));
         remaining_str = remaining_str.substr(delim2 + 1);
         auto delim3 = remaining_str.find(':');
-        this->relay_id = stoul(remaining_str.substr(0, delim3));
-        this->m = remaining_str.substr(delim3 + 1);
+        this->seq_id = stoi(remaining_str.substr(0, delim3));
+        remaining_str = remaining_str.substr(delim3 + 1);
+        auto delim4 = remaining_str.find(':');
+        this->relay_id = stoul(remaining_str.substr(0, delim4));
+        this->m = remaining_str.substr(delim4 + 1);
+    }
+
+    bool operator<(const Msg &r) const
+    {
+        return std::tie(this->src_id, this->seq_id) < std::tie(r.src_id, r.seq_id);
     }
 
 public:
     MessageType type;
     unsigned long src_id;
+    unsigned int seq_id;
     unsigned long relay_id;
     string m;
 };

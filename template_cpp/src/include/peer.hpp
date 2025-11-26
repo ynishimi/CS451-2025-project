@@ -7,6 +7,10 @@
 #include "perfectlink.hpp"
 
 using namespace std;
+
+// (src_id, seq_id)
+using MsgId = pair<unsigned long, unsigned int>;
+
 class Peer
 {
 public:
@@ -36,7 +40,7 @@ private:
   void createSocket();
   void urbBroadcast(Msg m);
   void tryUrbDeliver();
-  bool canDeliver(const string &m);
+  bool canDeliver(const MsgId &mi);
   void bebBroadcast(Msg m);
   void plSend(Parser::Host receiver_host, Msg m);
   void sendAck(int sockfd, string m, sockaddr_in senderaddr);
@@ -52,16 +56,17 @@ private:
   int sockfd_;
   PerfectLink pl_;
   ofstream logFile_;
+
   struct Urb
   {
     // todo: maybe I should use seq_ids for keys
 
-    // (m)
-    set<string> delivered;
-    // (sender_id, m)
-    set<pair<unsigned long, string>> pending;
-    // (m, relay_id)
-    map<string, set<unsigned long>> ack;
+    // (MsgId)
+    set<MsgId> delivered;
+    // (Msg)
+    set<Msg> pending;
+    // (MsgId, relay_id)
+    map<MsgId, set<unsigned long>> ack;
   };
   Urb urb_;
 };

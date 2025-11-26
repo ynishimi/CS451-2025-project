@@ -44,7 +44,8 @@ void Peer::sender()
   {
     // newly send the message. relay == src
 
-    Msg msg(MessageType::DATA, myId_, myId_, to_string(i));
+    // this case to_string(seq_id) == m
+    Msg msg(MessageType::DATA, myId_, i, myId_, to_string(i));
     // bebBroadcast(msg);
     urbBroadcast(msg);
 
@@ -66,22 +67,24 @@ void Peer::sender()
 // uniform reliable broadcast
 void Peer::urbBroadcast(Msg msg)
 {
-  urb_.pending.emplace(msg.src_id, msg.m);
+  urb_.pending.emplace(msg);
   bebBroadcast(msg);
 }
 
 void Peer::tryUrbDeliver()
 {
+  cout << "tryUrbDeliver()" << endl;
   auto it = urb_.pending.begin();
   while (it != urb_.pending.end())
   {
-    auto &src_id = it->first;
-    const string &m = it->second;
-
-    if (canDeliver(m) && urb_.delivered.count(m) == 0)
+    auto &src_id = it->src_id;
+    const unsigned int &seq_id = it->seq_id;
+    auto &m = it->m;
+    MsgId msgId = MsgId(src_id, seq_id);
+    if (canDeliver(msgId) && urb_.delivered.count(msgId) == 0)
     {
       // urbDeliver
-      urb_.delivered.emplace(m);
+      urb_.delivered.emplace(msgId);
       cout << "d " << src_id << " " << m << endl;
       logFile_ << "d " << src_id << " " << m << endl;
 
@@ -94,8 +97,14 @@ void Peer::tryUrbDeliver()
 
 bool Peer::canDeliver(const MsgId &mi)
 {
-  auto it = urb_.ack.find(m);
+  if (urb_.ack.count(mi) == 0)
+  {
+    cout << "mi not found" << endl;
+    return false;
+  }
+  auto it = urb_.ack.find(mi);
   auto &acked_peers = it->second;
+  // cout << "acked_peers: " << acked_peers.size() << ", parser_.hosts: " << parser_.hosts().size() << endl;
   return (acked_peers.size() * 2 > parser_.hosts().size());
 }
 
@@ -155,7 +164,7 @@ void Peer::receiver()
 {
   std::array<char, MAXLINE> buffer;
   struct sockaddr_in senderaddr;
-  unordered_set<string> delivered_msgs;
+  // set<MsgId> delivered_msgs;
   ssize_t n;
   while (true)
   {
@@ -175,27 +184,33 @@ void Peer::receiver()
     Msg msg{};
     msg.deserialize(m_serialized);
     unsigned long src_id = msg.src_id;
+    unsigned int seq_id = msg.seq_id;
+    MsgId msgId = MsgId(src_id, seq_id);
     Parser::Host srcHost = parser_.getHostFromId(src_id);
     pl_.onPacketReceived(sockfd_, myHost_, srcHost, msg);
 
-    // find duplication
-    if (msg.type == MessageType::DATA)
+    // // find duplication
+    // if (msg.type == MessageType::DATA)
+    // {
+    // const auto msg_id = MsgId(src_id, seq_id);
+    // auto it = delivered_msgs.find(msg_id);
+    // if (it == delivered_msgs.end())
+    // {
+    // a new message
+    // delivered_msgs.insert(msg_id);
+
+    // bebDelivered
+
+    urb_.ack[msgId].emplace(msg.relay_id);
+
+    auto result = urb_.pending.emplace(msg);
+    auto not_pending = result.second;
+    if (not_pending)
     {
-      auto it = delivered_msgs.find(m_serialized);
-      if (it == delivered_msgs.end())
-      {
-        // a new message
-        delivered_msgs.insert(m_serialized);
-
-        // bebDelivered
-        urb_.ack[msg.m].emplace(msg.relay_id);
-
-        auto result = urb_.pending.emplace(msg.src_id, msg.m);
-        if (result.second)
-        {
-          bebBroadcast(msg);
-        }
-      }
+      msg.relay_id = myId_;
+      bebBroadcast(msg);
     }
+    // }
+    // }
   }
 }

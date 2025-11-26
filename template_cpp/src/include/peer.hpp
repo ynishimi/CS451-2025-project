@@ -1,9 +1,12 @@
 #pragma once
+#include <set>
+#include <map>
+
 #include "parser.hpp"
 #include "msg.hpp"
 #include "perfectlink.hpp"
-using namespace std;
 
+using namespace std;
 class Peer
 {
 public:
@@ -14,6 +17,8 @@ public:
     myHost_ = parser_.getHostFromId(myId_);
     configPath_ = configPath;
     outputPath_ = outputPath;
+
+    logFile_.open(outputPath_);
   }
 
 public:
@@ -29,7 +34,10 @@ private:
   bool receiveAck(int sockfd);
   void sender();
   void createSocket();
-  void bebSend(Msg m);
+  void urbBroadcast(Msg m);
+  void tryUrbDeliver();
+  bool canDeliver(const string &m);
+  void bebBroadcast(Msg m);
   void plSend(Parser::Host receiver_host, Msg m);
   void sendAck(int sockfd, string m, sockaddr_in senderaddr);
 
@@ -43,4 +51,17 @@ private:
   int numMessages_;
   int sockfd_;
   PerfectLink pl_;
+  ofstream logFile_;
+  struct Urb
+  {
+    // todo: maybe I should use seq_ids for keys
+
+    // (m)
+    set<string> delivered;
+    // (sender_id, m)
+    set<pair<unsigned long, string>> pending;
+    // (m, relay_id)
+    map<string, set<unsigned long>> ack;
+  };
+  Urb urb_;
 };

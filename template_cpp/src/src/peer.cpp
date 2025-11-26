@@ -7,6 +7,8 @@
 
 static constexpr int MAXLINE = 1024;
 
+using namespace std;
+
 void Peer::start()
 {
   // read config file
@@ -17,6 +19,7 @@ void Peer::start()
   stringstream ss(line);
   ss >> num_messages;
   configFile.close();
+
   createSocket();
   setNumMessages(num_messages);
 
@@ -39,8 +42,14 @@ void Peer::sender()
 
   for (int i = 1; i <= numMessages_; i++)
   {
-    Msg msg(MessageType::DATA, this->myId(), to_string(i));
-    bebSend(msg);
+    // newly send the message. relay == src
+
+    Msg msg(MessageType::DATA, myId_, myId_, to_string(i));
+    // bebBroadcast(msg);
+    urbBroadcast(msg);
+
+    cout << "b " << msg.m << endl;
+    logFile_ << "b " << msg.m << endl;
   }
 
   while (true)
@@ -48,18 +57,55 @@ void Peer::sender()
     // wait for 1s
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     {
+      tryUrbDeliver();
       pl_.resend(sockfd_);
     }
   }
 }
 
+// uniform reliable broadcast
+void Peer::urbBroadcast(Msg msg)
+{
+  urb_.pending.emplace(msg.src_id, msg.m);
+  bebBroadcast(msg);
+}
+
+void Peer::tryUrbDeliver()
+{
+  auto it = urb_.pending.begin();
+  while (it != urb_.pending.end())
+  {
+    auto &src_id = it->first;
+    const string &m = it->second;
+
+    if (canDeliver(m) && urb_.delivered.count(m) == 0)
+    {
+      // urbDeliver
+      urb_.delivered.emplace(m);
+      cout << "d " << src_id << " " << m << endl;
+      logFile_ << "d " << src_id << " " << m << endl;
+
+      // todo: delete ack[m]
+      // urb_.ack[m]
+    }
+    it++;
+  }
+}
+
+bool Peer::canDeliver(const MsgId &mi)
+{
+  auto it = urb_.ack.find(m);
+  auto &acked_peers = it->second;
+  return (acked_peers.size() * 2 > parser_.hosts().size());
+}
+
 // best-effort broadcast
-void Peer::bebSend(Msg msg)
+void Peer::bebBroadcast(Msg msg)
 {
   // for all p, addSendlist message
   for (auto &host : parser_.hosts())
   {
-    std::cout << "bebSend: " << host.srcId << "msg: " << msg.m << std::endl;
+    std::cout << "bebBroadcast: " << host.srcId << "msg: " << msg.m << std::endl;
     pl_.addSendlist(host, msg);
     pl_.send(sockfd_, host, msg);
   }
@@ -70,7 +116,6 @@ void Peer::createSocket()
   // initialization of socket
   // File descriptor of a socket
   char buffer[MAXLINE];
-  ofstream outputFile(outputPath_);
 
   // struct sockaddr_in senderaddr, receiveraddr;
 
@@ -111,7 +156,6 @@ void Peer::receiver()
   std::array<char, MAXLINE> buffer;
   struct sockaddr_in senderaddr;
   unordered_set<string> delivered_msgs;
-  ofstream outputFile(outputPath_);
   ssize_t n;
   while (true)
   {
@@ -143,7 +187,14 @@ void Peer::receiver()
         // a new message
         delivered_msgs.insert(m_serialized);
 
-        outputFile << "d " << msg.src_id << " " << msg.m << endl;
+        // bebDelivered
+        urb_.ack[msg.m].emplace(msg.relay_id);
+
+        auto result = urb_.pending.emplace(msg.src_id, msg.m);
+        if (result.second)
+        {
+          bebBroadcast(msg);
+        }
       }
     }
   }

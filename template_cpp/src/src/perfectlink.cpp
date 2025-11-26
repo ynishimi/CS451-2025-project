@@ -59,10 +59,8 @@ void PerfectLink::onPacketReceived(int sockfd, Parser::Host myHost, Parser::Host
     }
     else if (msg.type == MessageType::DATA)
     {
-        Msg ackMsg(MessageType::ACK, myHost.srcId, msg.m);
-
-        // todo: process data?
-        // outputFile << "d " << host.srcId << " " << m << endl;
+        // send ackMsg. relay == src
+        Msg ackMsg(MessageType::ACK, myHost.srcId, myHost.srcId, msg.m);
 
         sendAck(sockfd, srcHost, ackMsg);
     }

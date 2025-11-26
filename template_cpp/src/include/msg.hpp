@@ -24,19 +24,19 @@ class Msg
 public:
     Msg() {};
     // Constructor to initialize the data members
-    Msg(MessageType type, long src_id, const string &m)
-        : type(type), src_id(src_id), m(m)
+    Msg(MessageType type, unsigned long src_id, unsigned long relay_id, const string &m)
+        : type(type), src_id(src_id), relay_id(relay_id), m(m)
     {
     }
 
     // Getter methods for the class
-    unsigned long getId() const { return src_id; }
-    string getM() const { return m; }
+    // unsigned long getId() const { return src_id; }
+    // string getM() const { return m; }
 
     //  Function for Serialization
     string serialize()
     {
-        return enum_to_string(type) + ':' + to_string(src_id) + ':' + m;
+        return enum_to_string(type) + ':' + to_string(src_id) + ':' + to_string(relay_id) + ':' + m;
     }
 
     //  Function for Deserialization
@@ -47,11 +47,15 @@ public:
         string remaining_str = serialized_m.substr(delim1 + 1);
         auto delim2 = remaining_str.find(':');
         this->src_id = stoul(remaining_str.substr(0, delim2));
-        this->m = remaining_str.substr(delim2 + 1);
+        remaining_str = remaining_str.substr(delim2 + 1);
+        auto delim3 = remaining_str.find(':');
+        this->relay_id = stoul(remaining_str.substr(0, delim3));
+        this->m = remaining_str.substr(delim3 + 1);
     }
 
 public:
     MessageType type;
     unsigned long src_id;
+    unsigned long relay_id;
     string m;
 };

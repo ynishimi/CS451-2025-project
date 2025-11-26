@@ -83,16 +83,25 @@ void Peer::tryUrbDeliver()
     MsgId msgId = MsgId(src_id, seq_id);
     if (canDeliver(msgId) && urb_.delivered.count(msgId) == 0)
     {
-      // urbDeliver
-      urb_.delivered.emplace(msgId);
-      cout << "d " << src_id << " " << m << endl;
-      logFile_ << "d " << src_id << " " << m << endl;
+      // FIFODeliver
+      if (canFIFODeliver(msgId))
+      {
+        urb_.delivered.emplace(msgId);
+        cout << "d " << src_id << " " << m << endl;
+        logFile_ << "d " << src_id << " " << m << endl;
 
-      // todo: delete ack[m]
-      // urb_.ack[m]
+        // todo: delete ack[m]
+        // urb_.ack[m]
+        last_delivered_[msgId.first]++;
+      }
     }
     it++;
   }
+}
+bool Peer::canFIFODeliver(const MsgId &mi)
+{
+  auto last_delivered_seq = last_delivered_[mi.first];
+  return (last_delivered_seq + 1 == mi.second);
 }
 
 bool Peer::canDeliver(const MsgId &mi)

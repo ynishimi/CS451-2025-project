@@ -1,6 +1,7 @@
 #pragma once
 #include <set>
 #include <map>
+#include <unordered_map>
 
 #include "parser.hpp"
 #include "msg.hpp"
@@ -41,6 +42,7 @@ private:
   void urbBroadcast(Msg m);
   void tryUrbDeliver();
   bool canDeliver(const MsgId &mi);
+  bool canFIFODeliver(const MsgId &mi);
   void bebBroadcast(Msg m);
   void plSend(Parser::Host receiver_host, Msg m);
   void sendAck(int sockfd, string m, sockaddr_in senderaddr);
@@ -69,4 +71,7 @@ private:
     map<MsgId, set<unsigned long>> ack;
   };
   Urb urb_;
+
+  // fifo
+  unordered_map<unsigned long, unsigned int> last_delivered_;
 };

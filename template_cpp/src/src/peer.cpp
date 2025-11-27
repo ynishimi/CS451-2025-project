@@ -93,6 +93,9 @@ void Peer::tryUrbDeliver()
         // todo: delete ack[m]
         // urb_.ack[m]
         last_delivered_[msgId.first]++;
+
+        it = urb_.pending.erase(it);
+        continue;
       }
     }
     it++;
@@ -193,33 +196,23 @@ void Peer::receiver()
     Msg msg{};
     msg.deserialize(m_serialized);
     unsigned long src_id = msg.src_id;
+    unsigned long relay_id = msg.relay_id;
     unsigned int seq_id = msg.seq_id;
     MsgId msgId = MsgId(src_id, seq_id);
-    Parser::Host srcHost = parser_.getHostFromId(src_id);
-    pl_.onPacketReceived(sockfd_, myHost_, srcHost, msg);
+    Parser::Host relayHost = parser_.getHostFromId(relay_id);
+    pl_.onPacketReceived(sockfd_, myHost_, relayHost, msg);
 
-    // // find duplication
-    // if (msg.type == MessageType::DATA)
-    // {
-    // const auto msg_id = MsgId(src_id, seq_id);
-    // auto it = delivered_msgs.find(msg_id);
-    // if (it == delivered_msgs.end())
-    // {
-    // a new message
-    // delivered_msgs.insert(msg_id);
-
-    // bebDelivered
-
-    urb_.ack[msgId].emplace(msg.relay_id);
-
-    auto result = urb_.pending.emplace(msg);
-    auto not_pending = result.second;
-    if (not_pending)
+    if (msg.type == MessageType::DATA)
     {
-      msg.relay_id = myId_;
-      bebBroadcast(msg);
+      urb_.ack[msgId].emplace(msg.relay_id);
+
+      auto result = urb_.pending.emplace(msg);
+      auto not_pending = result.second;
+      if (not_pending)
+      {
+        msg.relay_id = myId_;
+        bebBroadcast(msg);
+      }
     }
-    // }
-    // }
   }
 }

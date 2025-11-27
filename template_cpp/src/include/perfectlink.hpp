@@ -3,11 +3,13 @@
 #include <tuple>
 #include <vector>
 
-#include "perfectlink.hpp"
 #include "parser.hpp"
 #include "msg.hpp"
 
 using namespace std;
+
+// (src_id, seq_id)
+using MsgId = pair<unsigned long, unsigned int>;
 
 class PerfectLink
 {

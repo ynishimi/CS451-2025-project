@@ -37,16 +37,21 @@ void PerfectLink::resend(int sockfd)
     }
 }
 
-void PerfectLink::onPacketReceived(int sockfd, Parser::Host myHost, Parser::Host srcHost, Msg msg)
+void PerfectLink::onPacketReceived(int sockfd, Parser::Host myHost, Parser::Host P2PsrcHost, Msg msg)
 {
     lock_guard<mutex> lock(mu_);
 
     if (msg.type == MessageType::ACK)
     {
+        MsgId ackMsgId(msg.src_id, msg.seq_id);
         for (auto it = sendlist_.begin(); it != sendlist_.end();)
         {
+            Parser::Host &waitingDest = get<0>(*it);
+            Msg &pendingMsg = get<1>(*it);
+            MsgId pendingId(pendingMsg.src_id, pendingMsg.seq_id);
+
             // delete item from sendlist
-            if (get<0>(*it).srcId == srcHost.srcId && get<1>(*it).m == msg.m)
+            if (waitingDest.srcId == P2PsrcHost.srcId && pendingId == ackMsgId)
             {
                 it = sendlist_.erase(it);
                 std::cout << "ACK Received for seq " << msg.m << ". Removed from list." << std::endl;
@@ -60,14 +65,14 @@ void PerfectLink::onPacketReceived(int sockfd, Parser::Host myHost, Parser::Host
     else if (msg.type == MessageType::DATA)
     {
         // send ackMsg. relay == src
-        Msg ackMsg(MessageType::ACK, myHost.srcId, msg.seq_id, myHost.srcId, msg.m);
+        Msg ackMsg(MessageType::ACK, msg.src_id, msg.seq_id, myHost.srcId, msg.m);
 
-        sendAck(sockfd, srcHost, ackMsg);
+        sendAck(sockfd, P2PsrcHost, ackMsg);
     }
 }
 
-void PerfectLink::sendAck(int sockfd, Parser::Host srcHost, Msg ackMsg)
+void PerfectLink::sendAck(int sockfd, Parser::Host P2PsrcHost, Msg ackMsg)
 {
-    send(sockfd, srcHost, ackMsg);
+    send(sockfd, P2PsrcHost, ackMsg);
     std::cout << "Sent ack" << std::endl;
 }

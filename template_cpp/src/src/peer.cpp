@@ -49,7 +49,7 @@ void Peer::sender()
     // bebBroadcast(msg);
     urbBroadcast(msg);
 
-    cout << "b " << msg.m << endl;
+    // cout << "b " << msg.m << endl;
     logFile_ << "b " << msg.m << endl;
   }
 
@@ -73,7 +73,7 @@ void Peer::urbBroadcast(Msg msg)
 
 void Peer::tryUrbDeliver()
 {
-  cout << "tryUrbDeliver()" << endl;
+  // cout << "tryUrbDeliver()" << endl;
   auto it = urb_.pending.begin();
   while (it != urb_.pending.end())
   {
@@ -87,7 +87,7 @@ void Peer::tryUrbDeliver()
       if (canFIFODeliver(msgId))
       {
         urb_.delivered.emplace(msgId);
-        cout << "d " << src_id << " " << m << endl;
+        // cout << "d " << src_id << " " << m << endl;
         logFile_ << "d " << src_id << " " << m << endl;
 
         // todo: delete ack[m]
@@ -111,7 +111,7 @@ bool Peer::canDeliver(const MsgId &mi)
 {
   if (urb_.ack.count(mi) == 0)
   {
-    cout << "mi not found" << endl;
+    // cout << "mi not found" << endl;
     return false;
   }
   auto it = urb_.ack.find(mi);
@@ -126,7 +126,7 @@ void Peer::bebBroadcast(Msg msg)
   // for all p, addSendlist message
   for (auto &host : parser_.hosts())
   {
-    std::cout << "bebBroadcast: " << host.srcId << "msg: " << msg.m << std::endl;
+    // std::cout << "bebBroadcast: " << host.srcId << "msg: " << msg.m << std::endl;
     pl_.addSendlist(host, msg);
     pl_.send(sockfd_, host, msg);
   }

@@ -23,13 +23,13 @@ void PerfectLink::send(int sockfd, Parser::Host dest, Msg msg)
     string serialized_msg = msg.serialize();
     sendto(sockfd, serialized_msg.data(), serialized_msg.size(), 0,
            reinterpret_cast<const struct sockaddr *>(&destAddr), len);
-    std::cout << "sent message: " << serialized_msg << std::endl;
+    // std::cout << "sent message: " << serialized_msg << std::endl;
 }
 
 // resend unacked messages
 void PerfectLink::resend(int sockfd)
 {
-    std::cout << "resend message(s)" << std::endl;
+    // std::cout << "resend message(s)" << std::endl;
     lock_guard<mutex> lock(mu_);
     for (auto &item : sendlist_)
     {
@@ -54,7 +54,7 @@ void PerfectLink::onPacketReceived(int sockfd, Parser::Host myHost, Parser::Host
             if (waitingDest.srcId == P2PsrcHost.srcId && pendingId == ackMsgId)
             {
                 it = sendlist_.erase(it);
-                std::cout << "ACK Received for seq " << msg.m << ". Removed from list." << std::endl;
+                // std::cout << "ACK Received for seq " << msg.m << ". Removed from list." << std::endl;
             }
             else
             {
@@ -74,5 +74,5 @@ void PerfectLink::onPacketReceived(int sockfd, Parser::Host myHost, Parser::Host
 void PerfectLink::sendAck(int sockfd, Parser::Host P2PsrcHost, Msg ackMsg)
 {
     send(sockfd, P2PsrcHost, ackMsg);
-    std::cout << "Sent ack" << std::endl;
+    // std::cout << "Sent ack" << std::endl;
 }

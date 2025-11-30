@@ -55,10 +55,9 @@ void Peer::sender()
 
   while (true)
   {
-    // wait for 1s
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    // wait for 100ms
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     {
-      tryUrbDeliver();
       pl_.resend(sockfd_);
     }
   }
@@ -67,52 +66,54 @@ void Peer::sender()
 // uniform reliable broadcast
 void Peer::urbBroadcast(Msg msg)
 {
-  urb_.pending.emplace(msg);
+  urb_.pending[msg.src_id].emplace(msg);
   bebBroadcast(msg);
 }
 
 void Peer::tryUrbDeliver()
 {
-  lock_guard<mutex> lock(mu_);
+  // lock_guard<mutex> lock(mu_);
 
   // cout << "tryUrbDeliver()" << endl;
-  auto it = urb_.pending.begin();
-  while (it != urb_.pending.end())
+  for (auto it_map = urb_.pending.begin(); it_map != urb_.pending.end(); it_map++)
   {
-    auto &src_id = it->src_id;
-    const unsigned int &seq_id = it->seq_id;
-    auto &m = it->m;
-    MsgId msgId = MsgId(src_id, seq_id);
-    if (urb_.delivered.count(msgId) == 0 && canDeliver(msgId))
+    unsigned long src_id = it_map->first;
+    std::set<Msg> &msgs = it_map->second;
+
+    // iterates through messages
+    auto it_msg = msgs.begin();
+    while (it_msg != msgs.end())
     {
+      const MsgId msgId = MsgId(src_id, it_msg->seq_id);
       // FIFODeliver
-      if (canFIFODeliver(msgId))
+      if (!canFIFODeliver(msgId))
+      {
+        break;
+      }
+
+      // urbDeliver
+      if (urb_.delivered.count(msgId) == 0 && canDeliver(msgId))
       {
         urb_.delivered.emplace(msgId);
-        // cout << "d " << src_id << " " << m << endl;
-        logFile_ << "d " << src_id << " " << m << endl;
+        // cout << "d " << msgId.first << " " << it_msg->m << endl;
+        logFile_ << "d " << msgId.first << " " << it_msg->m << endl;
 
         last_delivered_[msgId.first]++;
 
         // delete ack[msgId]
         urb_.ack.erase(msgId);
         // delete pending[Msg]
-        it = urb_.pending.erase(it);
+        it_msg = msgs.erase(it_msg);
         continue;
       }
+      else
+      {
+        break;
+      }
     }
-    else
-    {
-      // debug
-      // cout << "debug: "
-      //      << "URBDeliver not successful "
-      //      << "msgId: " << msgId << ", "
-      //      << "urb_.delivered.count(msgId): " << urb_.delivered.count(msgId) << ", "
-      //      << "canDeliver(msgId): " << canDeliver(msgId) << endl;
-    }
-    it++;
   }
 }
+
 bool Peer::canFIFODeliver(const MsgId &mi)
 {
   auto last_delivered_seq = last_delivered_[mi.first];
@@ -233,15 +234,24 @@ void Peer::receiver()
     if (msg.type == MessageType::DATA)
     {
       lock_guard<mutex> lock(mu_);
+
+      // do not ack/broadcast msgs which are already delivered
+      if (urb_.delivered.count(msgId) > 0)
+      {
+        continue;
+      }
+
       urb_.ack[msgId].emplace(msg.relay_id);
 
-      auto result = urb_.pending.emplace(msg);
+      auto result = urb_.pending[msg.src_id].emplace(msg);
       auto not_pending = result.second;
       if (not_pending)
       {
         msg.relay_id = myId_;
         bebBroadcast(msg);
       }
+      // tries to deliver the message
+      tryUrbDeliver();
     }
   }
 }

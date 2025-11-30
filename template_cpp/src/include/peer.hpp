@@ -65,8 +65,8 @@ private:
 
     // (MsgId)
     set<MsgId> delivered;
-    // (Msg)
-    set<Msg> pending;
+    // (src_id, Msg)
+    map<unsigned long, std::set<Msg>> pending;
     // (MsgId, relay_id)
     map<MsgId, set<unsigned long>> ack;
   };

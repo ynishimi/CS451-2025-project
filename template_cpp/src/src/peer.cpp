@@ -56,7 +56,7 @@ void Peer::sender()
   while (true)
   {
     // wait for 1s
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     {
       tryUrbDeliver();
       pl_.resend(sockfd_);
@@ -73,6 +73,8 @@ void Peer::urbBroadcast(Msg msg)
 
 void Peer::tryUrbDeliver()
 {
+  lock_guard<mutex> lock(mu_);
+
   // cout << "tryUrbDeliver()" << endl;
   auto it = urb_.pending.begin();
   while (it != urb_.pending.end())
@@ -81,7 +83,7 @@ void Peer::tryUrbDeliver()
     const unsigned int &seq_id = it->seq_id;
     auto &m = it->m;
     MsgId msgId = MsgId(src_id, seq_id);
-    if (canDeliver(msgId) && urb_.delivered.count(msgId) == 0)
+    if (urb_.delivered.count(msgId) == 0 && canDeliver(msgId))
     {
       // FIFODeliver
       if (canFIFODeliver(msgId))
@@ -90,13 +92,23 @@ void Peer::tryUrbDeliver()
         // cout << "d " << src_id << " " << m << endl;
         logFile_ << "d " << src_id << " " << m << endl;
 
-        // todo: delete ack[m]
-        // urb_.ack[m]
         last_delivered_[msgId.first]++;
 
+        // delete ack[msgId]
+        urb_.ack.erase(msgId);
+        // delete pending[Msg]
         it = urb_.pending.erase(it);
         continue;
       }
+    }
+    else
+    {
+      // debug
+      // cout << "debug: "
+      //      << "URBDeliver not successful "
+      //      << "msgId: " << msgId << ", "
+      //      << "urb_.delivered.count(msgId): " << urb_.delivered.count(msgId) << ", "
+      //      << "canDeliver(msgId): " << canDeliver(msgId) << endl;
     }
     it++;
   }
@@ -104,20 +116,36 @@ void Peer::tryUrbDeliver()
 bool Peer::canFIFODeliver(const MsgId &mi)
 {
   auto last_delivered_seq = last_delivered_[mi.first];
-  return (last_delivered_seq + 1 == mi.second);
+  if (last_delivered_seq + 1 == mi.second)
+  {
+    return true;
+  }
+  else
+  {
+    // debug
+    // cout << "debug: " << "FIFODeliver not successful" << endl;
+    return false;
+  }
 }
 
 bool Peer::canDeliver(const MsgId &mi)
 {
   if (urb_.ack.count(mi) == 0)
   {
-    // cout << "mi not found" << endl;
+    cout << "mi not found" << endl;
     return false;
   }
   auto it = urb_.ack.find(mi);
   auto &acked_peers = it->second;
   // cout << "acked_peers: " << acked_peers.size() << ", parser_.hosts: " << parser_.hosts().size() << endl;
-  return (acked_peers.size() * 2 > parser_.hosts().size());
+  if (acked_peers.size() * 2 > parser_.hosts().size())
+  {
+    return true;
+  }
+  else
+  {
+    return false;
+  }
 }
 
 // best-effort broadcast
@@ -204,6 +232,7 @@ void Peer::receiver()
 
     if (msg.type == MessageType::DATA)
     {
+      lock_guard<mutex> lock(mu_);
       urb_.ack[msgId].emplace(msg.relay_id);
 
       auto result = urb_.pending.emplace(msg);

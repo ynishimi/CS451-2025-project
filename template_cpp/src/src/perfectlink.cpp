@@ -1,6 +1,13 @@
 #include "perfectlink.hpp"
 using namespace std;
 
+// output of MsgID
+std::ostream &operator<<(std::ostream &os, const MsgId &id)
+{
+    os << "src_id=" << id.first << ", seq_id=" << id.second;
+    return os;
+}
+
 // Put the message to outbox_. When
 void PerfectLink::addSendlist(Parser::Host dest, Msg msg)
 {

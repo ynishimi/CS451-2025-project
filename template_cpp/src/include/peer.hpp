@@ -71,6 +71,7 @@ private:
     map<MsgId, set<unsigned long>> ack;
   };
   Urb urb_;
+  mutex mu_;
 
   // fifo
   unordered_map<unsigned long, unsigned int> last_delivered_;

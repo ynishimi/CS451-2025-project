@@ -7,9 +7,9 @@
 #include "msg.hpp"
 
 using namespace std;
-
 // (src_id, seq_id)
 using MsgId = pair<unsigned long, unsigned int>;
+std::ostream &operator<<(std::ostream &os, const MsgId &id);
 
 class PerfectLink
 {

@@ -55,8 +55,8 @@ void Peer::sender()
 
   while (true)
   {
-    // wait for 100ms
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    // wait for 1s
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     {
       pl_.resend(sockfd_);
     }

@@ -5,6 +5,7 @@
 
 #include "parser.hpp"
 #include "msg.hpp"
+#include "lattice.hpp"
 
 using namespace std;
 // (src_id, seq_id)
@@ -15,16 +16,16 @@ class PerfectLink
 {
 public:
     PerfectLink() {}
-    void addSendlist(Parser::Host dest, Msg m);
-    void send(int sockfd, Parser::Host dest, Msg m);
+    void addSendlist(Parser::Host dest, Msg<LatticePayload> m);
+    void send(int sockfd, Parser::Host dest, Msg<LatticePayload> m);
     void resend(int sockfd);
-    void onPacketReceived(int sockfd, Parser::Host myHost, Parser::Host srcHost, Msg msg);
+    void onPacketReceived(int sockfd, Parser::Host myHost, Parser::Host srcHost, Msg<LatticePayload> msg);
 
 private:
-    void sendAck(int sockfd, Parser::Host myHost, Msg msg);
+    void sendAck(int sockfd, Parser::Host myHost, Msg<LatticePayload> msg);
 
 private:
     bool acked_;
     mutex mu_;
-    std::vector<tuple<Parser::Host, Msg>> sendlist_;
+    std::vector<tuple<Parser::Host, Msg<LatticePayload>>> sendlist_;
 };

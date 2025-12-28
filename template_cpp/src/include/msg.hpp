@@ -19,15 +19,14 @@ inline string enum_to_string(MessageType type)
     return to_string(static_cast<int>(type));
 }
 
+template <typename T>
 class Msg
 {
 public:
     Msg() {};
     // Constructor to initialize the data members
-    Msg(MessageType type, unsigned long src_id, unsigned int seq_id, unsigned long relay_id, const string &m)
-        : type(type), src_id(src_id), seq_id(seq_id), relay_id(relay_id), m(m)
-    {
-    }
+    Msg(MessageType type, unsigned long src_id, unsigned int seq_id, unsigned long relay_id, const T &p)
+        : type(type), src_id(src_id), seq_id(seq_id), relay_id(relay_id), payload(p) {}
 
     // Getter methods for the class
     // unsigned long getId() const { return src_id; }
@@ -36,7 +35,10 @@ public:
     //  Function for Serialization
     string serialize()
     {
-        return enum_to_string(type) + ':' + to_string(src_id) + ':' + to_string(seq_id) + ':' + to_string(relay_id) + ':' + m;
+        string result = "";
+        result = enum_to_string(type) + ':' + to_string(src_id) + ':' + to_string(seq_id) + ':' + to_string(relay_id) + ':';
+        result += payload.serialize();
+        return result;
     }
 
     //  Function for Deserialization
@@ -49,11 +51,14 @@ public:
         this->src_id = stoul(remaining_str.substr(0, delim2));
         remaining_str = remaining_str.substr(delim2 + 1);
         auto delim3 = remaining_str.find(':');
-        this->seq_id = stoi(remaining_str.substr(0, delim3));
+        this->seq_id = static_cast<unsigned int>(stoi(remaining_str.substr(0, delim3)));
         remaining_str = remaining_str.substr(delim3 + 1);
         auto delim4 = remaining_str.find(':');
         this->relay_id = stoul(remaining_str.substr(0, delim4));
-        this->m = remaining_str.substr(delim4 + 1);
+
+        // payload
+        string payload_str = remaining_str.substr(delim4 + 1);
+        this->payload.deserialize(payload_str);
     }
 
     bool operator<(const Msg &r) const
@@ -66,5 +71,6 @@ public:
     unsigned long src_id;
     unsigned int seq_id;
     unsigned long relay_id;
-    string m;
+    // string m;
+    T payload;
 };

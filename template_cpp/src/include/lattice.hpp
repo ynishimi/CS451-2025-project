@@ -1,7 +1,8 @@
 #pragma once
 #include <set>
 #include <functional>
-#include "peer.hpp"
+
+using namespace std;
 
 typedef std::set<int> proposalSet;
 
@@ -30,9 +31,12 @@ struct LatticePayload
         res += enum_to_string(type) + ":{";
         for (auto &val : proposed_value)
         {
-            res += val + ",";
+            res += to_string(val);
+            res += ",";
         }
         res += "}:" + to_string(active_proposal_number);
+
+        return res;
     };
 
     void deserialize(string payload_m)

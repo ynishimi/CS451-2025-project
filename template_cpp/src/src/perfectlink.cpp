@@ -9,13 +9,13 @@ std::ostream &operator<<(std::ostream &os, const MsgId &id)
 }
 
 // Put the message to outbox_. When
-void PerfectLink::addSendlist(Parser::Host dest, Msg msg)
+void PerfectLink::addSendlist(Parser::Host dest, Msg<LatticePayload> msg)
 {
     lock_guard<mutex> lock(mu_);
     sendlist_.push_back(make_tuple(dest, msg));
 }
 
-void PerfectLink::send(int sockfd, Parser::Host dest, Msg msg)
+void PerfectLink::send(int sockfd, Parser::Host dest, Msg<LatticePayload> msg)
 {
     // receiver-specific setting
     struct sockaddr_in destAddr;
@@ -44,7 +44,7 @@ void PerfectLink::resend(int sockfd)
     }
 }
 
-void PerfectLink::onPacketReceived(int sockfd, Parser::Host myHost, Parser::Host P2PsrcHost, Msg msg)
+void PerfectLink::onPacketReceived(int sockfd, Parser::Host myHost, Parser::Host P2PsrcHost, Msg<LatticePayload> msg)
 {
     lock_guard<mutex> lock(mu_);
 
@@ -54,7 +54,7 @@ void PerfectLink::onPacketReceived(int sockfd, Parser::Host myHost, Parser::Host
         for (auto it = sendlist_.begin(); it != sendlist_.end();)
         {
             Parser::Host &waitingDest = get<0>(*it);
-            Msg &pendingMsg = get<1>(*it);
+            Msg<LatticePayload> &pendingMsg = get<1>(*it);
             MsgId pendingId(pendingMsg.src_id, pendingMsg.seq_id);
 
             // delete item from sendlist
@@ -72,13 +72,13 @@ void PerfectLink::onPacketReceived(int sockfd, Parser::Host myHost, Parser::Host
     else if (msg.type == MessageType::DATA)
     {
         // send ackMsg. relay == src
-        Msg ackMsg(MessageType::ACK, msg.src_id, msg.seq_id, myHost.srcId, msg.m);
+        Msg<LatticePayload> ackMsg(MessageType::ACK, msg.src_id, msg.seq_id, myHost.srcId, msg.payload);
 
         sendAck(sockfd, P2PsrcHost, ackMsg);
     }
 }
 
-void PerfectLink::sendAck(int sockfd, Parser::Host P2PsrcHost, Msg ackMsg)
+void PerfectLink::sendAck(int sockfd, Parser::Host P2PsrcHost, Msg<LatticePayload> ackMsg)
 {
     send(sockfd, P2PsrcHost, ackMsg);
     // std::cout << "Sent ack" << std::endl;

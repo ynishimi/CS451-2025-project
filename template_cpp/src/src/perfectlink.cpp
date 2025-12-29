@@ -72,7 +72,7 @@ void PerfectLink::onPacketReceived(int sockfd, Parser::Host myHost, Parser::Host
     else if (msg.type == MessageType::DATA)
     {
         // send ackMsg. relay == src
-        Msg<LatticePayload> ackMsg(MessageType::ACK, msg.src_id, msg.seq_id, myHost.srcId, msg.payload);
+        Msg<LatticePayload> ackMsg(MessageType::ACK, msg.src_id, msg.seq_id, myHost.srcId, msg.lattice_shot_num, msg.payload);
 
         sendAck(sockfd, P2PsrcHost, ackMsg);
     }

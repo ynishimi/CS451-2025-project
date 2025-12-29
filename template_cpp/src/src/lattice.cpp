@@ -27,7 +27,7 @@ void LatticeProposer::Propose(proposalSet proposal)
     // - message type (proposal, ack, nack) in higher level
     // - proposed_value (proposal)
     // - active_proposal_number (proposal shot)
-    broadcastPayloadCallback_(LatticePayload{LatticeMessageType::PROPOSAL, proposed_value_, active_proposal_number_});
+    broadcastPayloadCallback_(lattice_shot_num_, {LatticeMessageType::PROPOSAL, proposed_value_, active_proposal_number_});
 }
 
 // Receive processes ack or nack
@@ -61,7 +61,7 @@ void LatticeProposer::Receive(const LatticePayload &p)
         nack_count_ = 0;
 
         // broadcast updated values (since NACK is received)
-        broadcastPayloadCallback_(LatticePayload{LatticeMessageType::PROPOSAL, proposed_value_, active_proposal_number_});
+        broadcastPayloadCallback_(lattice_shot_num_, {LatticeMessageType::PROPOSAL, proposed_value_, active_proposal_number_});
     }
 
     if (ack_count_ > f_ + 1 && active_)
@@ -75,7 +75,7 @@ void LatticeAcceptor::Init()
 {
     accepted_value_ = {};
 }
-void LatticeAcceptor::Receive(const LatticePayload &p)
+void LatticeAcceptor::Receive(unsigned long src_id, const LatticePayload &p)
 {
     if (p.type == LatticeMessageType::PROPOSAL)
     {
@@ -83,13 +83,13 @@ void LatticeAcceptor::Receive(const LatticePayload &p)
         {
             // proposal includes my set: ack
             accepted_value_ = p.proposed_value;
-            sendPayloadCallback_(LatticePayload{LatticeMessageType::ACK, {}, p.active_proposal_number});
+            sendPayloadCallback_(src_id, lattice_shot_num_, LatticePayload{LatticeMessageType::ACK, {}, p.active_proposal_number});
         }
         else
         {
             // proposal is missing some part of my set: nack and send corrected proposal
             accepted_value_.insert(p.proposed_value.begin(), p.proposed_value.end());
-            sendPayloadCallback_(LatticePayload{LatticeMessageType::NACK, accepted_value_, p.active_proposal_number});
+            sendPayloadCallback_(src_id, lattice_shot_num_, LatticePayload{LatticeMessageType::NACK, accepted_value_, p.active_proposal_number});
         }
     }
 }

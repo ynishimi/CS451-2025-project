@@ -25,8 +25,8 @@ class Msg
 public:
     Msg() {};
     // Constructor to initialize the data members
-    Msg(MessageType type, unsigned long src_id, unsigned int seq_id, unsigned long relay_id, const T &p)
-        : type(type), src_id(src_id), seq_id(seq_id), relay_id(relay_id), payload(p) {}
+    Msg(MessageType type, unsigned long src_id, unsigned int seq_id, unsigned long relay_id, unsigned int lattice_shot_num, const T &p)
+        : type(type), src_id(src_id), seq_id(seq_id), relay_id(relay_id), lattice_shot_num(lattice_shot_num), payload(p) {}
 
     // Getter methods for the class
     // unsigned long getId() const { return src_id; }
@@ -36,7 +36,7 @@ public:
     string serialize()
     {
         string result = "";
-        result = enum_to_string(type) + ':' + to_string(src_id) + ':' + to_string(seq_id) + ':' + to_string(relay_id) + ':';
+        result = enum_to_string(type) + ':' + to_string(src_id) + ':' + to_string(seq_id) + ':' + to_string(relay_id) + ':' + to_string(lattice_shot_num);
         result += payload.serialize();
         return result;
     }
@@ -55,9 +55,11 @@ public:
         remaining_str = remaining_str.substr(delim3 + 1);
         auto delim4 = remaining_str.find(':');
         this->relay_id = stoul(remaining_str.substr(0, delim4));
-
+        remaining_str = remaining_str.substr(delim4 + 1);
+        auto delim5 = remaining_str.find(':');
+        this->lattice_shot_num = stoi(remaining_str.substr(0, delim5));
         // payload
-        string payload_str = remaining_str.substr(delim4 + 1);
+        string payload_str = remaining_str.substr(delim5 + 1);
         this->payload.deserialize(payload_str);
     }
 
@@ -71,6 +73,7 @@ public:
     unsigned long src_id;
     unsigned int seq_id;
     unsigned long relay_id;
+    unsigned int lattice_shot_num;
     // string m;
     T payload;
 };

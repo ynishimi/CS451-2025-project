@@ -14,14 +14,42 @@ void Peer::start()
   // read config file
   ifstream configFile(this->configPath_);
   string line;
-  unsigned int num_messages;
   getline(configFile, line);
   stringstream ss(line);
-  ss >> num_messages;
+
+  int p;  // num of proposal
+  int vs; // max num of elements in a proposal
+  int ds; // max num of distinct elements across all proposals
+
+  ss >> p >> vs >> ds;
+
+  int prop_elem;
+  for (int lattice_shot = 0; lattice_shot < p; lattice_shot++)
+  {
+    getline(configFile, line);
+    stringstream ss(line);
+    for (int j = 0; j < vs; j++)
+    {
+      if (ss >> prop_elem)
+      {
+        this->proposals_[lattice_shot].insert(prop_elem);
+      }
+    }
+  }
+
   configFile.close();
 
   createSocket();
-  setNumMessages(num_messages);
+  // setNumMessages(num_messages);
+
+  // // create LatticeProposer
+  // int num_peer = 2;
+  // LatticeProposer proposer(num_peer, [this](const LatticePayload &p)
+  //                          { this->latticeBebBroadcast(p); });
+
+  // //  create LatticeAcceptor
+  // LatticeAcceptor acceptor([this](const LatticePayload &p)
+  //                          { this->latticePlSend(p); });
 
   std::thread receiver_thread(&Peer::receiver, this);
   sender();
@@ -32,21 +60,26 @@ void Peer::start()
 unsigned long Peer::myId() { return myId_; }
 Parser::Host Peer::myHost() { return myHost_; }
 Parser Peer::parser() { return parser_; }
-void Peer::setNumMessages(unsigned int numMessages)
-{
-  numMessages_ = numMessages;
-}
+// void Peer::setNumMessages(unsigned int numMessages)
+// {
+//   numMessages_ = numMessages;
+// }
 
 void Peer::sender()
 {
   // todo: send apporopriate proposal
-  for (unsigned int i = 1; i <= numMessages_; i++)
+  for (int i = 0; i < size(proposers_); i++)
   {
     // newly send the message. relay == src
 
     // this case to_string(seq_id) == m
-    Msg<LatticePayload> msg(MessageType::DATA, myId_, i, myId_, LatticePayload{});
-    bebBroadcast(msg);
+    // Msg<LatticePayload> msg(MessageType::DATA, myId_, i, myId_, LatticePayload{});
+    // bebBroadcast(msg);
+
+    // todo: use lattice_shot_num_
+    proposalSet testP{1, 2, 3};
+
+    proposers_[i].Propose(testP);
 
     // cout << "b " << msg.payload << endl;
     // logFile_ << "b " << msg.m << endl;
@@ -160,6 +193,44 @@ void Peer::bebBroadcast(Msg<LatticePayload> msg)
   }
 }
 
+// broadcasts latticePayload
+void Peer::latticeBebBroadcast(const int lattice_shot_num, const LatticePayload &p)
+{
+  // create msg and broadcast it
+  // MessageType type, unsigned long src_id, unsigned int seq_id, unsigned long relay_id, unsigned int lattice_shot_num, const T &p
+
+  bebBroadcast(Msg<LatticePayload>{
+      MessageType::DATA,
+      myId_,
+      getPacketCounterAndIncrement(),
+      myId_,
+      lattice_shot_num,
+      p});
+}
+
+void Peer::latticePlSend(const unsigned long dst_id, const int lattice_shot_num, const LatticePayload &p)
+{
+  Msg<LatticePayload> msg{
+      MessageType::DATA,
+      myId_,
+      getPacketCounterAndIncrement(),
+      myId_,
+      lattice_shot_num,
+      p};
+
+  auto dst_host = parser_.getHostFromId(dst_id);
+  pl_.addSendlist(dst_host, msg);
+  pl_.send(sockfd_, dst_host, msg);
+}
+
+int Peer::getPacketCounterAndIncrement()
+{
+  lock_guard<mutex> lock(packet_counter_mu_);
+  int cur_pc = this->packet_counter_;
+  this->packet_counter_++;
+  return cur_pc;
+}
+
 void Peer::createSocket()
 {
   // initialization of socket
@@ -206,6 +277,7 @@ void Peer::receiver()
   struct sockaddr_in senderaddr;
   // set<MsgId> delivered_msgs;
   ssize_t n;
+
   while (true)
   {
     socklen_t len = sizeof(senderaddr);
@@ -230,8 +302,11 @@ void Peer::receiver()
     Parser::Host relayHost = parser_.getHostFromId(relay_id);
     pl_.onPacketReceived(sockfd_, myHost_, relayHost, msg);
 
-    // if (msg.type == MessageType::DATA)
-    // {
+    if (msg.type == MessageType::DATA)
+    {
+      // pass the payload to lattice proposer/acceptor
+      latticeHandler(msg.src_id, msg.lattice_shot_num, msg.payload);
+    }
     //   lock_guard<mutex> lock(mu_);
 
     //   // do not ack/broadcast msgs which are already delivered
@@ -252,5 +327,20 @@ void Peer::receiver()
     //   // tries to deliver the message
     //   tryUrbDeliver();
     // }
+  }
+}
+
+// todo: take lattice_shot_number_
+// latticeHandler
+void Peer::latticeHandler(unsigned long src_id, const int lattice_shot_num, const LatticePayload &p)
+{
+  if (p.type == LatticeMessageType::PROPOSAL)
+  {
+    // acceptor.Receive(p);
+    acceptors_[lattice_shot_num].Receive(src_id, p);
+  }
+  else
+  {
+    proposers_[lattice_shot_num].Receive(p);
   }
 }

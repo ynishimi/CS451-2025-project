@@ -22,7 +22,7 @@ struct LatticePayload
 {
     LatticeMessageType type;
     proposalSet proposed_value;
-    int active_proposal_number;
+    unsigned int active_proposal_number;
 
     // PROPOSAL:{1,2,3,}:1
     string serialize() const
@@ -47,7 +47,7 @@ struct LatticePayload
 
         string remaining_str = payload_m.substr(delim1 + 1);
 
-        // proposed_value
+        // proposed_value (e.g., {1,2,3,})
         auto delim2 = remaining_str.find(':');
         string proposed_value_string = remaining_str.substr(0, delim2);
         if (proposed_value_string != "")
@@ -63,7 +63,7 @@ struct LatticePayload
 class LatticeProposer
 {
 public:
-    LatticeProposer(int lattice_shot_num, int f, function<void(const int lattice_shot_num, const LatticePayload &)> broadcastCallback)
+    LatticeProposer(int lattice_shot_num, int f, function<void(const LatticePayload &)> broadcastCallback)
         : lattice_shot_num_(lattice_shot_num), f_(f), broadcastPayloadCallback_(broadcastCallback)
     {
         Init();
@@ -74,24 +74,24 @@ public:
 
 private:
     bool active_;
-    int ack_count_;
-    int nack_count_;
+    unsigned int ack_count_;
+    unsigned int nack_count_;
     // active_proposal_number_ denotes the number used to distinguish between proposals WITHIN this shot (a single line of proposal in config)
-    int active_proposal_number_;
+    unsigned int active_proposal_number_;
     proposalSet proposed_value_;
 
     int lattice_shot_num_;
     // n = 2f + 1
-    int f_;
+    unsigned int f_;
 
     // broadcast (using broadcastCallback)
-    function<void(const int lattice_shot_num, const LatticePayload &)> broadcastPayloadCallback_;
+    function<void(const LatticePayload &)> broadcastPayloadCallback_;
 };
 
 class LatticeAcceptor
 {
 public:
-    LatticeAcceptor(int lattice_shot_num, function<void(unsigned long src_id, const int lattice_shot_num, const LatticePayload &)> sendCallback)
+    LatticeAcceptor(int lattice_shot_num, function<void(unsigned long src_id, const LatticePayload &)> sendCallback)
         : lattice_shot_num_(lattice_shot_num), sendPayloadCallback_(sendCallback)
     {
         Init();
@@ -102,5 +102,7 @@ public:
 private:
     proposalSet accepted_value_;
     int lattice_shot_num_;
-    function<void(unsigned long src_id, const int lattice_shot_num, LatticePayload)> sendPayloadCallback_;
+    function<void(unsigned long src_id, LatticePayload)> sendPayloadCallback_;
 };
+
+bool isProposalSetIncluded(proposalSet base, proposalSet compare);

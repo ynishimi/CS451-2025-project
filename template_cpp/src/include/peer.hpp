@@ -17,28 +17,28 @@ using MsgId = pair<unsigned long, unsigned int>;
 class Peer
 {
 public:
-  Peer(Parser parser, const char *configPath, const char *outputPath)
+  Peer(Parser parser, const char *outputPath, int p, int vs, int ds, vector<proposalSet> proposals)
       //  function<void(const int lattice_shot_num, const LatticePayload &)> broadcastCallback,
       //  function<void(const int lattice_shot_num, const LatticePayload &)> sendCallback)
-      : parser_{parser}
+      : parser_{parser}, proposals_(proposals), p_(p), vs_(vs), ds_(ds)
   {
     myId_ = parser.srcId();
     myHost_ = parser_.getHostFromId(myId_);
-    configPath_ = configPath;
     outputPath_ = outputPath;
 
     logFile_.open(outputPath_);
 
     // create lattice proposer/acceptor
+    // todo: use file's data
     int num_peer = 2;
     int f = num_peer / 2;
     int lattice_shot_num = 0;
-    for (int i = 0; i < 1; i++)
+    for (int lattice_shot_num = 0; lattice_shot_num < 1; lattice_shot_num++)
     {
       proposers_.emplace_back(lattice_shot_num, f, [&](const LatticePayload &p)
-                              { this->latticeBebBroadcast(i, p); });
-      acceptors_.emplace_back(lattice_shot_num, f, [&](const unsigned long dst_id, const LatticePayload &p)
-                              { this->latticePlSend(dst_id, i, p); });
+                              { this->latticeBebBroadcast(lattice_shot_num, p); });
+      acceptors_.emplace_back(lattice_shot_num, [&](const unsigned long dst_id, const LatticePayload &p)
+                              { this->latticePlSend(dst_id, lattice_shot_num, p); });
     }
 
     // // create LatticeProposer
@@ -69,10 +69,10 @@ private:
   // bool canDeliver(const MsgId &mi);
   // bool canFIFODeliver(const MsgId &mi);
   void bebBroadcast(Msg<LatticePayload> m);
-  void latticeBebBroadcast(const int lattice_shot_num, const LatticePayload &p);
+  void latticeBebBroadcast(const unsigned int lattice_shot_num, const LatticePayload &p);
   void plSend(Parser::Host receiver_host, Msg<LatticePayload> m);
-  void latticePlSend(unsigned long dst_id, const int lattice_shot_num, const LatticePayload &p);
-  int getPacketCounterAndIncrement();
+  void latticePlSend(unsigned long dst_id, const unsigned int lattice_shot_num, const LatticePayload &p);
+  unsigned int getPacketCounterAndIncrement();
   void sendAck(int sockfd, string m, sockaddr_in senderaddr);
   void latticeHandler(unsigned long src_id, const int lattice_shot_num, const LatticePayload &p);
 
@@ -96,9 +96,12 @@ private:
   vector<LatticeAcceptor> acceptors_;
   vector<proposalSet> proposals_;
 
+  int p_;  // num of proposal
+  int vs_; // max num of elements in a proposal
+  int ds_; // max num of distinct elements across all proposals
+
   // struct Urb
   // {
-  //   // todo: maybe I should use seq_ids for keys
 
   //   // (MsgId)
   //   set<MsgId> delivered;

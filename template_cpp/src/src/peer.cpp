@@ -11,34 +11,6 @@ using namespace std;
 
 void Peer::start()
 {
-  // read config file
-  ifstream configFile(this->configPath_);
-  string line;
-  getline(configFile, line);
-  stringstream ss(line);
-
-  int p;  // num of proposal
-  int vs; // max num of elements in a proposal
-  int ds; // max num of distinct elements across all proposals
-
-  ss >> p >> vs >> ds;
-
-  int prop_elem;
-  for (int lattice_shot = 0; lattice_shot < p; lattice_shot++)
-  {
-    getline(configFile, line);
-    stringstream ss(line);
-    for (int j = 0; j < vs; j++)
-    {
-      if (ss >> prop_elem)
-      {
-        this->proposals_[lattice_shot].insert(prop_elem);
-      }
-    }
-  }
-
-  configFile.close();
-
   createSocket();
   // setNumMessages(num_messages);
 
@@ -68,7 +40,7 @@ Parser Peer::parser() { return parser_; }
 void Peer::sender()
 {
   // todo: send apporopriate proposal
-  for (int i = 0; i < size(proposers_); i++)
+  for (int i = 0; i < p_; i++)
   {
     // newly send the message. relay == src
 
@@ -77,9 +49,8 @@ void Peer::sender()
     // bebBroadcast(msg);
 
     // todo: use lattice_shot_num_
-    proposalSet testP{1, 2, 3};
 
-    proposers_[i].Propose(testP);
+    proposers_[i].Propose(proposals_[i]);
 
     // cout << "b " << msg.payload << endl;
     // logFile_ << "b " << msg.m << endl;
@@ -194,7 +165,7 @@ void Peer::bebBroadcast(Msg<LatticePayload> msg)
 }
 
 // broadcasts latticePayload
-void Peer::latticeBebBroadcast(const int lattice_shot_num, const LatticePayload &p)
+void Peer::latticeBebBroadcast(const unsigned int lattice_shot_num, const LatticePayload &p)
 {
   // create msg and broadcast it
   // MessageType type, unsigned long src_id, unsigned int seq_id, unsigned long relay_id, unsigned int lattice_shot_num, const T &p
@@ -208,7 +179,7 @@ void Peer::latticeBebBroadcast(const int lattice_shot_num, const LatticePayload 
       p});
 }
 
-void Peer::latticePlSend(const unsigned long dst_id, const int lattice_shot_num, const LatticePayload &p)
+void Peer::latticePlSend(const unsigned long dst_id, const unsigned int lattice_shot_num, const LatticePayload &p)
 {
   Msg<LatticePayload> msg{
       MessageType::DATA,
@@ -223,7 +194,7 @@ void Peer::latticePlSend(const unsigned long dst_id, const int lattice_shot_num,
   pl_.send(sockfd_, dst_host, msg);
 }
 
-int Peer::getPacketCounterAndIncrement()
+unsigned int Peer::getPacketCounterAndIncrement()
 {
   lock_guard<mutex> lock(packet_counter_mu_);
   int cur_pc = this->packet_counter_;
@@ -330,7 +301,6 @@ void Peer::receiver()
   }
 }
 
-// todo: take lattice_shot_number_
 // latticeHandler
 void Peer::latticeHandler(unsigned long src_id, const int lattice_shot_num, const LatticePayload &p)
 {

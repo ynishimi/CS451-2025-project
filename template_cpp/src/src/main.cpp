@@ -72,7 +72,37 @@ int main(int argc, char **argv)
 
   std::cout << "Broadcasting and delivering messages...\n\n";
 
-  Peer peer(parser, parser.configPath(), parser.outputPath());
+  // read config file
+  ifstream configFile(parser.configPath());
+  string line;
+  getline(configFile, line);
+  stringstream ss(line);
+
+  int p;  // num of proposal
+  int vs; // max num of elements in a proposal
+  int ds; // max num of distinct elements across all proposals
+
+  ss >> p >> vs >> ds;
+
+  vector<proposalSet> proposals(p);
+
+  int prop_elem;
+  for (int lattice_shot = 0; lattice_shot < p; lattice_shot++)
+  {
+    getline(configFile, line);
+    stringstream ss(line);
+    for (int j = 0; j < vs; j++)
+    {
+      if (ss >> prop_elem)
+      {
+        proposals[lattice_shot].insert(prop_elem);
+      }
+    }
+  }
+
+  configFile.close();
+
+  Peer peer(parser, parser.outputPath(), p, vs, ds, proposals);
   peer.start();
 
   // After a process finishes broadcasting,

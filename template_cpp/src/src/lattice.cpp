@@ -22,6 +22,8 @@ void LatticeProposer::Propose(proposalSet proposal)
     ack_count_ = 0;
     nack_count_ = 0;
 
+    debugPrint("proposal", proposed_value_);
+
     // broadcast
     // message should contain the following data:
     // - message type (proposal, ack, nack) in higher level
@@ -67,6 +69,9 @@ void LatticeProposer::Receive(const LatticePayload &p)
 
     if (ack_count_ > f_ + 1 && active_)
     {
+        // todo: decide
+        // naive implementation
+        debugPrint("decide", proposed_value_);
         active_ = false;
     }
 }

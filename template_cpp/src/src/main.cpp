@@ -3,6 +3,7 @@
 #include <thread>
 #include <array>
 
+#include "common.hpp"
 #include "parser.hpp"
 #include "peer.hpp"
 
@@ -91,12 +92,11 @@ int main(int argc, char **argv)
   {
     getline(configFile, line);
     stringstream ss(line);
-    for (int j = 0; j < vs; j++)
+    // debugPrint("line", line);
+    while (ss >> prop_elem)
     {
-      if (ss >> prop_elem)
-      {
-        proposals[lattice_shot].insert(prop_elem);
-      }
+      proposals[lattice_shot].insert(prop_elem);
+      // debugPrint("inserted proposal", prop_elem);
     }
   }
 

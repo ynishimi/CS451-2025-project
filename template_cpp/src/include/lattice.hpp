@@ -1,6 +1,9 @@
 #pragma once
 #include <set>
 #include <functional>
+#include <iostream>
+#include <sstream>
+#include "common.hpp"
 
 using namespace std;
 
@@ -28,13 +31,16 @@ struct LatticePayload
     string serialize() const
     {
         string res = "";
-        res += enum_to_string(type) + ":{";
+        res += enum_to_string(type) + ":";
+
         for (auto &val : proposed_value)
         {
             res += to_string(val);
             res += ",";
         }
-        res += "}:" + to_string(active_proposal_number);
+        res += ":" + to_string(active_proposal_number);
+
+        // cout << "serialize: " << res << endl;
 
         return res;
     };
@@ -43,22 +49,38 @@ struct LatticePayload
     {
         // type
         auto delim1 = payload_m.find(':');
+        // cout << "payload:" << payload_m.substr(0, delim1) << endl;
         this->type = static_cast<LatticeMessageType>(stoi(payload_m.substr(0, delim1)));
 
         string remaining_str = payload_m.substr(delim1 + 1);
 
-        // proposed_value (e.g., {1,2,3,})
+        // proposed_value (e.g., 1,2,3,)
         auto delim2 = remaining_str.find(':');
         string proposed_value_string = remaining_str.substr(0, delim2);
         if (proposed_value_string != "")
         {
             // todo: add each element to set
+            // loop through the set and
+
+            istringstream ss(proposed_value_string);
+            string t;
+            while (getline(ss, t, ','))
+                // cout << "deserialize(parsed): " << t << endl;
+
+                proposed_value.insert(stoi(t));
         }
 
         // active_proposal_number
-        string payload_str = remaining_str.substr(delim2 + 1);
+        active_proposal_number = stoi(remaining_str.substr(delim2 + 1));
     };
 };
+inline ostream &operator<<(ostream &os, const LatticePayload &payload)
+{
+    os << "LatticePayload{";
+    os << "type: " << static_cast<int>(payload.type) << ", proposed_value: " << payload.proposed_value << ", active_proposal_number: " << payload.active_proposal_number;
+    os << "}";
+    return os;
+}
 
 class LatticeProposer
 {

@@ -29,26 +29,15 @@ public:
     logFile_.open(outputPath_);
 
     // create lattice proposer/acceptor
-    // todo: use file's data
-    int num_peer = 2;
-    int f = num_peer / 2;
-    int lattice_shot_num = 0;
-    for (int lattice_shot_num = 0; lattice_shot_num < 1; lattice_shot_num++)
+    auto num_peer = static_cast<unsigned int>(parser_.hosts().size());
+    auto f = num_peer / 2;
+    for (int lattice_shot_num = 0; lattice_shot_num < p_; lattice_shot_num++)
     {
       proposers_.emplace_back(lattice_shot_num, f, [&](const LatticePayload &p)
                               { this->latticeBebBroadcast(lattice_shot_num, p); });
       acceptors_.emplace_back(lattice_shot_num, [&](const unsigned long dst_id, const LatticePayload &p)
                               { this->latticePlSend(dst_id, lattice_shot_num, p); });
     }
-
-    // // create LatticeProposer
-    // int num_peer = 2;
-    // LatticeProposer proposer(num_peer, [this](const LatticePayload &p)
-    //                          { this->latticeBebBroadcast(p); });
-
-    // //  create LatticeAcceptor
-    // LatticeAcceptor acceptor([this](const LatticePayload &p)
-    //                          { this->latticePlSend(p); });
   }
 
 public:
@@ -64,10 +53,6 @@ private:
   bool receiveAck(int sockfd);
   void sender();
   void createSocket();
-  // void urbBroadcast(Msg<string> m);
-  // void tryUrbDeliver();
-  // bool canDeliver(const MsgId &mi);
-  // bool canFIFODeliver(const MsgId &mi);
   void bebBroadcast(Msg<LatticePayload> m);
   void latticeBebBroadcast(const unsigned int lattice_shot_num, const LatticePayload &p);
   void plSend(Parser::Host receiver_host, Msg<LatticePayload> m);

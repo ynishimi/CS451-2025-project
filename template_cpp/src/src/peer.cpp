@@ -4,6 +4,7 @@
 #include <string>
 #include <unordered_set>
 #include <thread>
+#include "common.hpp"
 
 static constexpr int MAXLINE = 1024;
 
@@ -12,16 +13,6 @@ using namespace std;
 void Peer::start()
 {
   createSocket();
-  // setNumMessages(num_messages);
-
-  // // create LatticeProposer
-  // int num_peer = 2;
-  // LatticeProposer proposer(num_peer, [this](const LatticePayload &p)
-  //                          { this->latticeBebBroadcast(p); });
-
-  // //  create LatticeAcceptor
-  // LatticeAcceptor acceptor([this](const LatticePayload &p)
-  //                          { this->latticePlSend(p); });
 
   std::thread receiver_thread(&Peer::receiver, this);
   sender();
@@ -32,27 +23,15 @@ void Peer::start()
 unsigned long Peer::myId() { return myId_; }
 Parser::Host Peer::myHost() { return myHost_; }
 Parser Peer::parser() { return parser_; }
-// void Peer::setNumMessages(unsigned int numMessages)
-// {
-//   numMessages_ = numMessages;
-// }
 
 void Peer::sender()
 {
-  // todo: send apporopriate proposal
   for (int i = 0; i < p_; i++)
   {
-    // newly send the message. relay == src
-
-    // this case to_string(seq_id) == m
-    // Msg<LatticePayload> msg(MessageType::DATA, myId_, i, myId_, LatticePayload{});
-    // bebBroadcast(msg);
-
-    // todo: use lattice_shot_num_
-
     proposers_[i].Propose(proposals_[i]);
 
-    // cout << "b " << msg.payload << endl;
+    // debugPrint("proposal", proposals_[i]);
+
     // logFile_ << "b " << msg.m << endl;
   }
 
@@ -65,92 +44,6 @@ void Peer::sender()
     }
   }
 }
-
-// // uniform reliable broadcast
-// void Peer::urbBroadcast(Msg<string> msg)
-// {
-//   urb_.pending[msg.src_id].emplace(msg);
-//   bebBroadcast(msg);
-// }
-
-// void Peer::tryUrbDeliver()
-// {
-//   // lock_guard<mutex> lock(mu_);
-
-//   // cout << "tryUrbDeliver()" << endl;
-//   for (auto it_map = urb_.pending.begin(); it_map != urb_.pending.end(); it_map++)
-//   {
-//     unsigned long src_id = it_map->first;
-//     std::set<Msg<string>> &msgs = it_map->second;
-
-//     // iterates through messages
-//     auto it_msg = msgs.begin();
-//     while (it_msg != msgs.end())
-//     {
-//       const MsgId msgId = MsgId(src_id, it_msg->seq_id);
-//       // FIFODeliver
-//       if (!canFIFODeliver(msgId))
-//       {
-//         break;
-//       }
-
-//       // urbDeliver
-//       if (urb_.delivered.count(msgId) == 0 && canDeliver(msgId))
-//       {
-//         urb_.delivered.emplace(msgId);
-//         // cout << "d " << msgId.first << " " << it_msg->m << endl;
-//         logFile_ << "d " << msgId.first << " " << it_msg->m << endl;
-
-//         last_delivered_[msgId.first]++;
-
-//         // delete ack[msgId]
-//         urb_.ack.erase(msgId);
-//         // delete pending[Msg]
-//         it_msg = msgs.erase(it_msg);
-//         continue;
-//       }
-//       else
-//       {
-//         break;
-//       }
-//     }
-//   }
-// }
-
-// bool Peer::canFIFODeliver(const MsgId &mi)
-// {
-//   auto last_delivered_seq = last_delivered_[mi.first];
-//   if (last_delivered_seq + 1 == mi.second)
-//   {
-//     return true;
-//   }
-//   else
-//   {
-//     // debug
-//     // cout << "debug: " << "FIFODeliver not successful" << endl;
-//     return false;
-//   }
-// }
-
-// bool Peer::canDeliver(const MsgId &mi)
-// {
-//   if (urb_.ack.count(mi) == 0)
-//   {
-//     cout << "mi not found" << endl;
-//     return false;
-//   }
-//   auto it = urb_.ack.find(mi);
-//   auto &acked_peers = it->second;
-//   // cout << "acked_peers: " << acked_peers.size() << ", parser_.hosts: " << parser_.hosts().size() << endl;
-//   if (acked_peers.size() * 2 > parser_.hosts().size())
-//   {
-//     return true;
-//   }
-//   else
-//   {
-//     return false;
-//   }
-// }
 
 // best-effort broadcast
 void Peer::bebBroadcast(Msg<LatticePayload> msg)
@@ -169,6 +62,8 @@ void Peer::latticeBebBroadcast(const unsigned int lattice_shot_num, const Lattic
 {
   // create msg and broadcast it
   // MessageType type, unsigned long src_id, unsigned int seq_id, unsigned long relay_id, unsigned int lattice_shot_num, const T &p
+
+  debugPrint("broadcast", p);
 
   bebBroadcast(Msg<LatticePayload>{
       MessageType::DATA,
@@ -278,32 +173,13 @@ void Peer::receiver()
       // pass the payload to lattice proposer/acceptor
       latticeHandler(msg.src_id, msg.lattice_shot_num, msg.payload);
     }
-    //   lock_guard<mutex> lock(mu_);
-
-    //   // do not ack/broadcast msgs which are already delivered
-    //   if (urb_.delivered.count(msgId) > 0)
-    //   {
-    //     continue;
-    //   }
-
-    //   urb_.ack[msgId].emplace(msg.relay_id);
-
-    //   auto result = urb_.pending[msg.src_id].emplace(msg);
-    //   auto not_pending = result.second;
-    //   if (not_pending)
-    //   {
-    //     msg.relay_id = myId_;
-    //     bebBroadcast(msg);
-    //   }
-    //   // tries to deliver the message
-    //   tryUrbDeliver();
-    // }
   }
 }
 
 // latticeHandler
 void Peer::latticeHandler(unsigned long src_id, const int lattice_shot_num, const LatticePayload &p)
 {
+  debugPrint("received", p);
   if (p.type == LatticeMessageType::PROPOSAL)
   {
     // acceptor.Receive(p);

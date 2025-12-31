@@ -110,6 +110,7 @@ int main(int argc, char **argv)
   configFile.close();
 
   Peer peer(parser, parser.outputPath(), p, vs, ds, proposals);
+  pPeer = &peer;
   peer.start();
 
   // After a process finishes broadcasting,

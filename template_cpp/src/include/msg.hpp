@@ -29,14 +29,12 @@ public:
         : type(type), src_id(src_id), seq_id(seq_id), relay_id(relay_id), lattice_shot_num(lattice_shot_num), payload(p) {}
 
     // Getter methods for the class
-    // unsigned long getId() const { return src_id; }
-    // string getM() const { return m; }
 
     //  Function for Serialization
     string serialize()
     {
         string result = "";
-        result = enum_to_string(type) + ':' + to_string(src_id) + ':' + to_string(seq_id) + ':' + to_string(relay_id) + ':' + to_string(lattice_shot_num);
+        result = enum_to_string(type) + ':' + to_string(src_id) + ':' + to_string(seq_id) + ':' + to_string(relay_id) + ':' + to_string(lattice_shot_num) + ':';
         result += payload.serialize();
         return result;
     }

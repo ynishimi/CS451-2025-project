@@ -28,15 +28,20 @@ public:
 
     logFile_.open(outputPath_);
 
+    decisions_.resize(p_);
+
     // create lattice proposer/acceptor
     auto num_peer = static_cast<unsigned int>(parser_.hosts().size());
     auto f = num_peer / 2;
     for (int lattice_shot_num = 0; lattice_shot_num < p_; lattice_shot_num++)
     {
-      proposers_.emplace_back(lattice_shot_num, f, [&](const LatticePayload &p)
-                              { this->latticeBebBroadcast(lattice_shot_num, p); });
-      acceptors_.emplace_back(lattice_shot_num, [&](const unsigned long dst_id, const LatticePayload &p)
-                              { this->latticePlSend(dst_id, lattice_shot_num, p); });
+      proposers_.emplace_back(lattice_shot_num, f, [this, lattice_shot_num](const LatticePayload &p)
+                              { this->latticeBebBroadcast(lattice_shot_num, p); }, [this, lattice_shot_num](const proposalSet &decision)
+                              { debugPrint("decision", decision);
+                                this->decisions_[lattice_shot_num] = decision; });
+      acceptors_.emplace_back(
+          lattice_shot_num, [this, lattice_shot_num](const unsigned long dst_id, const LatticePayload &p)
+          { this->latticePlSend(dst_id, lattice_shot_num, p); });
     }
   }
 
@@ -47,6 +52,8 @@ public:
   Parser parser();
   // void setReceiverId(int receiverId);
   void setNumMessages(unsigned int numMessages);
+
+  void PrintDecisions();
 
 private:
   void receiver();
@@ -80,23 +87,9 @@ private:
   vector<LatticeProposer> proposers_;
   vector<LatticeAcceptor> acceptors_;
   vector<proposalSet> proposals_;
+  vector<proposalSet> decisions_;
 
   int p_;  // num of proposal
   int vs_; // max num of elements in a proposal
   int ds_; // max num of distinct elements across all proposals
-
-  // struct Urb
-  // {
-
-  //   // (MsgId)
-  //   set<MsgId> delivered;
-  //   // (src_id, Msg)
-  //   map<unsigned long, std::set<Msg<T>>> pending;
-  //   // (MsgId, relay_id)
-  //   map<MsgId, set<unsigned long>> ack;
-  // };
-  // Urb urb_;
-
-  // fifo
-  // unordered_map<unsigned long, unsigned int> last_delivered_;
 };

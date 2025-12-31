@@ -22,7 +22,7 @@ void LatticeProposer::Propose(proposalSet proposal)
     ack_count_ = 0;
     nack_count_ = 0;
 
-    debugPrint("proposal", proposed_value_);
+    // debugPrint("proposal", proposed_value_);
 
     // broadcast
     // message should contain the following data:
@@ -72,6 +72,7 @@ void LatticeProposer::Receive(const LatticePayload &p)
         // todo: decide
         // naive implementation
         debugPrint("decide", proposed_value_);
+        decideCallback_(proposed_value_);
         active_ = false;
     }
 }

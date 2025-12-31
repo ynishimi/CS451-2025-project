@@ -10,6 +10,8 @@
 #include <signal.h>
 #include "hello.h"
 
+Peer *pPeer = nullptr;
+
 static void stop(int)
 {
   // reset signal handlers to default
@@ -21,6 +23,11 @@ static void stop(int)
 
   // write/flush output file if necessary
   std::cout << "Writing output.\n";
+
+  if (pPeer != nullptr)
+  {
+    pPeer->PrintDecisions();
+  }
 
   // exit directly from signal handler
   exit(0);

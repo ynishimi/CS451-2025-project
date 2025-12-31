@@ -29,10 +29,6 @@ void Peer::sender()
   for (int i = 0; i < p_; i++)
   {
     proposers_[i].Propose(proposals_[i]);
-
-    // debugPrint("proposal", proposals_[i]);
-
-    // logFile_ << "b " << msg.m << endl;
   }
 
   while (true)
@@ -42,6 +38,14 @@ void Peer::sender()
     {
       pl_.resend(sockfd_);
     }
+  }
+}
+
+void Peer::PrintDecisions()
+{
+  for (auto &decision : decisions_)
+  {
+    logFile_ << decision << endl;
   }
 }
 

@@ -32,11 +32,14 @@ struct LatticePayload
     {
         string res = "";
         res += enum_to_string(type) + ":";
+        bool first = true;
 
         for (auto &val : proposed_value)
         {
+            if (!first)
+                res += ",";
             res += to_string(val);
-            res += ",";
+            first = false;
         }
         res += ":" + to_string(active_proposal_number);
 
@@ -47,6 +50,7 @@ struct LatticePayload
 
     void deserialize(string payload_m)
     {
+        // debugPrint("deserialize", payload_m);
         // type
         auto delim1 = payload_m.find(':');
         // cout << "payload:" << payload_m.substr(0, delim1) << endl;
@@ -59,15 +63,12 @@ struct LatticePayload
         string proposed_value_string = remaining_str.substr(0, delim2);
         if (proposed_value_string != "")
         {
-            // todo: add each element to set
-            // loop through the set and
-
             istringstream ss(proposed_value_string);
             string t;
             while (getline(ss, t, ','))
-                // cout << "deserialize(parsed): " << t << endl;
-
+            {
                 proposed_value.insert(stoi(t));
+            }
         }
 
         // active_proposal_number
@@ -85,8 +86,8 @@ inline ostream &operator<<(ostream &os, const LatticePayload &payload)
 class LatticeProposer
 {
 public:
-    LatticeProposer(int lattice_shot_num, int f, function<void(const LatticePayload &)> broadcastCallback)
-        : lattice_shot_num_(lattice_shot_num), f_(f), broadcastPayloadCallback_(broadcastCallback)
+    LatticeProposer(int lattice_shot_num, int f, function<void(const LatticePayload &)> broadcastCallback, function<void(const proposalSet &)> decideCallback)
+        : lattice_shot_num_(lattice_shot_num), f_(f), broadcastPayloadCallback_(broadcastCallback), decideCallback_(decideCallback)
     {
         Init();
     }
@@ -108,6 +109,8 @@ private:
 
     // broadcast (using broadcastCallback)
     function<void(const LatticePayload &)> broadcastPayloadCallback_;
+    // update Peer's decision
+    function<void(const proposalSet &)> decideCallback_;
 };
 
 class LatticeAcceptor

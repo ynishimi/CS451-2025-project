@@ -67,9 +67,8 @@ void LatticeProposer::Receive(const LatticePayload &p)
         broadcastPayloadCallback_({LatticeMessageType::PROPOSAL, proposed_value_, active_proposal_number_});
     }
 
-    if (ack_count_ > f_ + 1 && active_)
+    if (ack_count_ >= f_ + 1 && active_)
     {
-        // todo: decide
         // naive implementation
         debugPrint("decide", proposed_value_);
         decideCallback_(proposed_value_);

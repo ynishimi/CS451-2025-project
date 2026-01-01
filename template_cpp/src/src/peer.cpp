@@ -6,7 +6,7 @@
 #include <thread>
 #include "common.hpp"
 
-static constexpr int MAXLINE = 1024;
+static constexpr int MAXLINE = 65536;
 
 using namespace std;
 
@@ -145,7 +145,7 @@ void Peer::receiver()
 {
   std::array<char, MAXLINE> buffer;
   struct sockaddr_in senderaddr;
-  // set<MsgId> delivered_msgs;
+  set<MsgId> delivered_msgs;
   ssize_t n;
 
   while (true)
@@ -174,8 +174,12 @@ void Peer::receiver()
 
     if (msg.type == MessageType::DATA)
     {
-      // pass the payload to lattice proposer/acceptor
-      latticeHandler(msg.src_id, msg.lattice_shot_num, msg.payload);
+      if (delivered_msgs.find(msgId) == delivered_msgs.end())
+      {
+        delivered_msgs.insert(msgId);
+        // pass the payload to lattice proposer/acceptor
+        latticeHandler(msg.src_id, msg.lattice_shot_num, msg.payload);
+      }
     }
   }
 }

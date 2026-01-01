@@ -50,7 +50,6 @@ struct LatticePayload
 
     void deserialize(string payload_m)
     {
-        // debugPrint("deserialize", payload_m);
         // type
         auto delim1 = payload_m.find(':');
         // cout << "payload:" << payload_m.substr(0, delim1) << endl;
@@ -61,10 +60,14 @@ struct LatticePayload
         // proposed_value (e.g., 1,2,3,)
         auto delim2 = remaining_str.find(':');
         string proposed_value_string = remaining_str.substr(0, delim2);
+
+        proposed_value.clear();
+
         if (proposed_value_string != "")
         {
             istringstream ss(proposed_value_string);
             string t;
+
             while (getline(ss, t, ','))
             {
                 proposed_value.insert(stoi(t));
